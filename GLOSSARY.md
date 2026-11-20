@@ -54,7 +54,7 @@ _Avoid_: user, service use
 ## How firearms relate
 
 **Derived from**:
-The firearm was developed directly from the other firearm's design.
+The firearm was developed directly from the other firearm's design. Derivation never loops: a firearm cannot be derived, through any chain, from itself. The same holds for *copy of*.
 _Avoid_: based on, descendant
 
 **Copy of**:
@@ -120,10 +120,47 @@ The cartridge whose case another cartridge was developed from.
 **Primary cartridge**:
 The cartridge a variant is chiefly chambered for, when it accepts more than one.
 
-## Publishing
+## Sources and evidence
+
+**Source**:
+A published work facts are taken from: a book, article, website, patent, manual, video or dataset (such as Wikidata).
+_Avoid_: reference, bibliography entry
+
+**Citation**:
+A link from one firearm, variant, person, organization or cartridge, optionally one of its fields, to a source, with a locator such as a page, claim number, timestamp or deep link.
+_Avoid_: footnote (that is how a citation is displayed), reference
+
+**Image**:
+A picture of a firearm, person, organization or cartridge, always with its author, license and where it came from. The first image of a subject is its thumbnail.
+_Avoid_: media, photo, picture
+
+**License**:
+The terms an image may be used under. Only public domain, CC0, CC BY and CC BY-SA are accepted.
+_Avoid_: copyright, rights
+
+**Video**:
+An embedded YouTube video about a firearm. Videos found automatically start as **suggested** and become **approved** or **rejected** by an admin; only approved videos are shown.
+_Avoid_: video reference, clip
+
+## Editing and publishing
+
+**Admin**:
+A person allowed to create, edit, publish and delete content. There is one role; public visitors cannot edit.
+_Avoid_: editor, moderator, user
 
 **Draft**:
 Content that exists but is not yet shown publicly, such as freshly imported firearms awaiting review.
 
 **Published**:
 Content visible on the public site.
+
+**Publish requirements**:
+What must be filled in before content can be published. A firearm needs a country of origin, design date, operating mechanism and a base variant whose primary cartridge is published; a cartridge needs its type and country of origin; people and organizations only need a name.
+_Avoid_: publish gate, validation
+
+**Unpublish**:
+Returning published content to draft, which removes it from the public site.
+
+**Locked field**:
+A field an admin has changed by hand. Imports never overwrite it until an admin unlocks it.
+_Avoid_: protected field, override

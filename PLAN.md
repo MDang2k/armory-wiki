@@ -170,14 +170,15 @@ Year filters use **overlap**: an item matches `[from, to]` when `Year <= to AND 
 
 Designers can be people or organizations (Wikidata's "designed by" often points at a design bureau). Pages render them together, e.g. "M. Kalashnikov; Izhmash design bureau".
 
-### 3.5 Sources, citations and media (Phase 3)
+### 3.5 Sources, citations, images and videos (Phase 3)
 
-**Source**: `Id`, `Type` (enum: Book, Article, Website, Patent, Manual, Video, Dataset), `Title`, `Author`, `Publisher`, `Year`, `Url`, `Isbn`
-**Citation**: `Id`, `SourceId`, `EntityType`, `EntityId`, `FieldName?`, `Page?`. Every imported entity gets one Citation to the Wikidata source.
+**Source**: `Id`, `Type` (enum: Book, Article, Website, Patent, Manual, Video, Dataset), `Title`, `Author?`, `Publisher?`, `Year?`, `Url?`, `Isbn?`
 
-**Media**: `Id`, `FirearmId?`, `PersonId?`, `StorageKey`, `Caption`, `Author`, `License` (short name, e.g. "CC BY-SA 4.0"), `SourceUrl` (e.g. the Commons file page), `Width`, `Height`, `CommonsFileName?` (unique when set). **License, Author and SourceUrl are required.** Originals plus thumbnail and medium sizes (ImageSharp) are stored on the file-store volume.
+**Citation**: `Id`, `SourceId`, exactly one of `FirearmId?` / `VariantId?` / `PersonId?` / `OrganizationId?` / `CartridgeId?` (check constraint, cascading deletes), `FieldName?` (an API field name), `Locator?` (free text: "p. 112", "claim 3", "12:40", a deep URL). Every imported entity gets one citation to the Wikidata source (Phase 4).
 
-**VideoReference**: `Id`, `FirearmId`, `YouTubeVideoId` (unique per firearm), `Title`, `Channel`, `PublishedAt`, `Status` (enum: Suggested, Approved, Rejected). Only `Approved` videos are public. Embedded, never re-hosted.
+**Media** (GLOSSARY.md: *image*): `Id`, exactly one of `FirearmId?` / `PersonId?` / `OrganizationId?` / `CartridgeId?` (check constraint), `SortOrder` (the first image is the thumbnail), `ContentHash` (storage key), `Caption?`, `Author` (required), `License` (required, fixed list: `CC0-1.0`, `PD`, `CC-BY-2.0|2.5|3.0|4.0`, `CC-BY-SA-2.0|2.5|3.0|4.0`), `SourceUrl` (required), `Width`, `Height`, `CommonsFileName?` (unique when set). Files: the original plus WebP `thumb` (320 px) and `medium` (1280 px), named by content hash, EXIF stripped after applying orientation.
+
+**VideoReference** (GLOSSARY.md: *video*): `Id`, `FirearmId`, `YouTubeVideoId` (unique per firearm), `Title`, `Channel`, `PublishedAt`, `Status` (Suggested, Approved, Rejected). Only Approved videos are public. Videos an admin adds by hand start Approved. Embedded, never re-hosted.
 
 ### 3.6 Later (not scheduled; do **not** create)
 `User` (public registration), `Revision`, `Conflict`, and the public wiki-editing flow. Revisit when there is real outside interest in contributing.
@@ -300,19 +301,49 @@ Write endpoints come in Phase 3 (admin).
 **Done when:** `dotnet test` is green and every endpoint is browsable in Scalar.
 
 ### Phase 3: Admin API, sources and media
-- [ ] ASP.NET Core Identity with cookie auth; a single `Admin` role; admin user seeded from configuration (user secrets in Development)
-- [ ] POST/PUT/DELETE endpoints for all entities so far, protected by the `Admin` policy; admin reads bypass the Published filter
-- [ ] Creating a firearm creates its base variant in the same transaction
-- [ ] Every admin update appends changed field names to `LockedFields`
-- [ ] Slug changes write a `SlugRedirect` row; slug auto-generated from name when not supplied, with collision suffix (`-2`)
-- [ ] Publish endpoint enforcing the publish gate (§3.3); admin list endpoint exposes "missing for publish" fields
-- [ ] FluentValidation for all write DTOs (slug format `^[a-z0-9]+(-[a-z0-9]+)*$`; firearm slugs `facets` and `compare` are reserved because they are API routes; positive measurements, `FuzzyDate` consistency: Month 1–12, Day valid for month, `YearTo >= Year`)
-- [ ] **Source**, **Citation**, **Media**, **VideoReference** entities from §3.5 + migration + admin endpoints (incl. approve/reject for videos)
-- [ ] File store: a single `FileStore` class writing to a configured directory (Docker volume); image upload endpoint generates thumbnail + medium (ImageSharp)
-- [ ] Antiforgery/CSRF protection for cookie-authenticated writes
-- [ ] Tests: unauthorized → 401/403, validation failures → 400 ProblemDetails, publish gate, LockedFields appended, slug redirect written, happy paths
+Built in four slices (3a–3d), each tested, reviewed and committed on its own. Terms follow GLOSSARY.md: *admin*, *publish requirements*, *unpublish*, *locked field*.
 
-**Done when:** an admin can create a firearm with variants, designers, chamberings, relations, an uploaded image and a citation via the API, publish it, and tests are green.
+Rules shared by every slice:
+- Admin endpoints live under `/api/admin`, behind one `Admin` policy on the group. Admin DTOs carry `status`, `lockedFields`, `version` and `missingForPublish`, and admin reads bypass the Published filter. Public routes never change behaviour based on who is asking.
+- Writes are `PUT` with the full representation; there is no `PATCH`. The server diffs old and new state, and every changed field is added to `LockedFields`.
+- Lock keys mirror API field names: core fields as `designDate`, variant fields as `variants/{variantId}/weightEmptyG` (id, not slug), whole lists as `tags`, `designers`, `manufacturers`, `relations`, `adoptions`, `chamberings/{variantId}`, plus `baseVariant`. `DELETE /api/admin/{entity}/{id}/locks/{key}` unlocks without changing the value.
+- Optimistic concurrency on Postgres `xmin`: every admin DTO has `version`, every `PUT` sends it, and a mismatch answers 409 ProblemDetails carrying the current version.
+- Write handlers load with `AsTracking()` (the API context is no-tracking by default).
+- FluentValidation on every write DTO: slug format `^[a-z0-9]+(-[a-z0-9]+)*$`; firearm slugs `facets` and `compare` are reserved because they are API routes; positive measurements; `FuzzyDate` consistency (Month 1–12, Day valid for the month, `YearTo >= Year`, a Decade starts at a year ending in 0).
+- Slugs are generated from the name when not supplied: lowercase, `×` → `x`, accents removed, Cyrillic transliterated, every other run of non-alphanumerics → `-`, trimmed; collisions get `-2`, `-3`, … A slug change writes a `SlugRedirect`. A live slug always beats a redirect: taking a slug deletes any redirect with that old slug, including renaming back to it.
+- Deleting: firearms and their child rows only while Draft; people, organizations, cartridges, countries, mechanisms and tags only when nothing references them (409 listing the references). Deleting also removes the entity's slug redirects and image files.
+- `POST .../publish` enforces the publish requirements from GLOSSARY.md (400 listing what is missing); `POST .../unpublish` returns content to Draft.
+
+**3a: auth and firearms**
+- [ ] ASP.NET Core Identity inside `ArmoryWikiDbContext` (same migrations, snake_case tables). Own endpoints only, no `MapIdentityApi` (it exposes public registration): `POST /api/admin/auth/login`, `POST /api/admin/auth/logout`, `GET /api/admin/auth/me`, `GET /api/admin/auth/antiforgery`. Lockout after 5 failed logins; login rate-limited per IP. Cookie `HttpOnly`, `Secure`, `SameSite=Strict`.
+- [ ] Antiforgery token header required on every unsafe `/api/admin` request, checked by one group filter.
+- [ ] One `Admin` role. The admin user is created from configuration (`Admin:Email`, `Admin:Password`) in every environment when missing: user secrets in Development, `.env` in production.
+- [ ] Firearm admin endpoints: list (`status`, `q`, sort by `updatedAt` newest first, `missingForPublish` per item), detail, create (creates the base variant in the same transaction), `PUT` core fields, variant CRUD at `/variants/{variantId}`, `POST /variants/{variantId}/make-base`, replace-the-list `PUT`s for tags, designers, manufacturers, relations, adoptions and chamberings, publish, unpublish, delete, unlock.
+- [ ] A *derived from* or *copy of* link that would create a cycle is rejected (400 naming the loop).
+- [ ] The base variant cannot be deleted; promote another variant first.
+- [ ] Tests: 401 when not logged in; 400 without the antiforgery header; validation 400s; 409 on a stale version; locks appended, and unlock; slug redirect written, and the live-slug-wins rules; cycle rejection; make-base; publish requirements; delete rules; happy path from create to publish to visible on the public API.
+
+**3b: other entities and reference data**
+- [ ] Admin endpoints (list, detail, create, `PUT`, publish/unpublish where the entity has a status, delete, unlock) for people, organizations, cartridges, countries, tags and mechanisms.
+- [ ] Moving a mechanism to another parent, or changing its slug, rewrites the `Path` of it and all its descendants in one transaction; a mechanism cannot move beneath itself; only an unused leaf can be deleted.
+- [ ] `reference_seed_log` table: `ReferenceDataSeeder` inserts only keys it has never seeded before, so admin deletions and renames stick.
+- [ ] Tests for each.
+
+**3c: sources and citations**
+- [ ] Source and Citation entities (§3.5) and migration; admin CRUD for sources; citations added and removed per subject at `/api/admin/{firearms|variants|people|organizations|cartridges}/{id}/citations`.
+- [ ] Public firearm, person, organization and cartridge detail include their citations.
+- [ ] Tests.
+
+**3d: images and videos**
+- [ ] Media and VideoReference entities and migration.
+- [ ] A single `FileStore` class writing to a configured directory (Docker volume). Upload: `POST /api/admin/{firearms|people|organizations|cartridges}/{id}/images` as multipart (file plus caption, author, license, sourceUrl). JPEG, PNG or WebP up to 20 MB, verified by decoding; EXIF stripped after applying orientation; original plus WebP thumb (320 px) and medium (1280 px), named by content hash.
+- [ ] `PUT .../images/{imageId}` edits details, `PUT .../images/order` reorders (the first is the thumbnail), `DELETE .../images/{imageId}` removes the files unless another image shares the content hash.
+- [ ] The API serves `/media/...` in Development only; Caddy serves it in production.
+- [ ] Public detail DTOs include images (with author, license and source) and approved videos; the list's `thumbnailUrl` is the first image's thumb.
+- [ ] Videos: an admin adds one by YouTube URL (Approved); approve and reject endpoints for suggested ones.
+- [ ] Tests.
+
+**Done when:** an admin can, through the API, create a firearm with variants, designers, chamberings, relations, an uploaded image and a citation, publish it, and see it on the public API; all tests are green.
 
 ### Phase 4: Importers
 Wikidata is the main content source (ADR-0004). All importers are CLI subcommands of the API project (`dotnet run --project src/ArmoryWiki.Api -- <command> [--dry-run]`), run by hand (on the VPS as one-shot `docker compose run` containers). No scheduler.
