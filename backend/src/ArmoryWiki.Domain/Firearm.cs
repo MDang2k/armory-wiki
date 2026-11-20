@@ -56,7 +56,7 @@ public sealed class Variant : Entity
     public int? BarrelLengthMm { get; set; }
     public int? RateOfFireMinRpm { get; set; }
     public int? RateOfFireMaxRpm { get; set; }
-    public int? MuzzleVelocityMs { get; set; }
+    public int? MuzzleVelocityMps { get; set; }
     public int? EffectiveRangeM { get; set; }
     public int? MagazineCapacityStandard { get; set; }
     public FiringModes FiringModes { get; set; }

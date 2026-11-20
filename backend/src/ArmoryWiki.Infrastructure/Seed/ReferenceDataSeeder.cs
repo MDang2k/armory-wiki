@@ -74,7 +74,9 @@ public static class ReferenceDataSeeder
 
     public static async Task SeedAsync(ArmoryWikiDbContext db, CancellationToken ct = default)
     {
-        var mechanisms = await db.OperatingMechanisms.ToDictionaryAsync(m => m.Slug, ct);
+        // Loaded entities are reused as navigation targets, so they must be tracked.
+        db.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
+        var mechanisms =await db.OperatingMechanisms.ToDictionaryAsync(m => m.Slug, ct);
         foreach (var seed in Mechanisms.Where(s => !mechanisms.ContainsKey(s.Slug)))
         {
             var parent = seed.ParentSlug is null ? null : mechanisms[seed.ParentSlug];

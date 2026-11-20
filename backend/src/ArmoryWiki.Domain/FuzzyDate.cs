@@ -21,4 +21,10 @@ public sealed class FuzzyDate
 
     public static FuzzyDate OnDay(int year, int month, int day) =>
         new() { Year = year, Month = month, Day = day, Precision = DatePrecision.Day };
+
+    /// <summary>"The 1950s" is InDecade(1950), stored as the range 1950–1959 so year filters find it.</summary>
+    public static FuzzyDate InDecade(int firstYear) =>
+        firstYear % 10 == 0
+            ? new() { Year = firstYear, YearTo = firstYear + 9, Precision = DatePrecision.Decade }
+            : throw new ArgumentOutOfRangeException(nameof(firstYear), firstYear, "A decade starts at a year ending in 0.");
 }

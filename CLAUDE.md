@@ -43,6 +43,8 @@ Backend:
 - File-scoped namespaces, `sealed` classes by default, records for DTOs.
 - `async` all the way with `CancellationToken` passed through; no `.Result`/`.Wait()`.
 - Never return EF entities from endpoints; project into DTOs.
+- The API's DbContext is **no-tracking by default** (reads dominate; projecting owned `FuzzyDate`s requires it). Write paths call `AsTracking()`; seeders switch tracking on themselves.
+- Endpoints live in `Api/Features/<Resource>/` with their DTOs, return `TypedResults`, and declare non-200 answers (`ProducesProblem`, `ProducesSlugMisses`) so the OpenAPI document stays complete for the frontend.
 - Every migration gets a descriptive name. **Never edit a migration that has been applied.**
 - Every new endpoint gets at least one integration test. No live-network tests.
 

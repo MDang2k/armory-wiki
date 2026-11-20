@@ -13,6 +13,8 @@ public static class DevelopmentSeeder
 {
     public static async Task SeedAsync(ArmoryWikiDbContext db, CancellationToken ct = default)
     {
+        // Loaded mechanisms and tags are reused as navigation targets, so they must be tracked.
+        db.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
         if (await db.Countries.AnyAsync(ct))
         {
             return;
@@ -174,7 +176,7 @@ public static class DevelopmentSeeder
         var ak47 = AddFirearm("ak-47", "AK-47", "Q37116", ussr, FuzzyDate.InYear(1947), longStroke, boxMagazine, cartridge762x39, 30, selectFire,
             [assaultRifle, coldWar], "Soviet gas-operated assault rifle chambered in 7.62×39mm, designed by Mikhail Kalashnikov.",
             "AK", "Avtomat Kalashnikova", "Kalashnikov");
-        var akm = AddFirearm("akm", "AKM", "Q432662", ussr, new FuzzyDate { Year = 1950, Precision = DatePrecision.Decade }, longStroke, boxMagazine, cartridge762x39, 30, selectFire,
+        var akm = AddFirearm("akm", "AKM", "Q432662", ussr, FuzzyDate.InDecade(1950), longStroke, boxMagazine, cartridge762x39, 30, selectFire,
             [assaultRifle, coldWar], "Modernized, lighter development of the AK-47.", "Avtomat Kalashnikova Modernizirovanny");
         var ak74 = AddFirearm("ak-74", "AK-74", "Q156229", ussr, FuzzyDate.InYear(1974), longStroke, boxMagazine, cartridge545x39, 30, selectFire,
             [assaultRifle, coldWar, postColdWar], "Soviet assault rifle developed from the AKM for the 5.45×39mm cartridge.");

@@ -12,8 +12,8 @@ Early development, built phase by phase from [PLAN.md](PLAN.md).
 |---|---|---|
 | 0 | Repository and infrastructure | Done |
 | 1 | Domain model, database, development seed | Done |
-| 2 | Read API | Next |
-| 3 | Admin API, sources and media | |
+| 2 | Read API | Done |
+| 3 | Admin API, sources and media | Next |
 | 4 | Importers (Wikidata, Commons, Wikipedia, Forgotten Weapons videos) | |
 | 5 | Frontend, read-only | |
 | 6 | Deploy | |

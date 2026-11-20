@@ -114,7 +114,7 @@ Year filters use **overlap**: an item matches `[from, to]` when `Year <= to AND 
 **Variant** (holds the actual specifications)
 - `Id`, `FirearmId`, `Slug` (unique per firearm), `Name`, `IsBaseVariant` (bool; exactly one per firearm)
 - `IntroducedDate` (FuzzyDate?)
-- Specs, all nullable: `WeightEmptyG`, `OverallLengthMm`, `OverallLengthFoldedMm`, `BarrelLengthMm`, `RateOfFireMinRpm`, `RateOfFireMaxRpm`, `MuzzleVelocityMs`, `EffectiveRangeM`, `MagazineCapacityStandard`
+- Specs, all nullable: `WeightEmptyG`, `OverallLengthMm`, `OverallLengthFoldedMm`, `BarrelLengthMm`, `RateOfFireMinRpm`, `RateOfFireMaxRpm`, `MuzzleVelocityMps`, `EffectiveRangeM`, `MagazineCapacityStandard`
 - `FiringModes` (flags enum: SemiAutomatic, Burst, Automatic; `None` for manually operated firearms)
 - `ExtraSpecs` (`jsonb`, `Dictionary<string, string>`) for rare/odd specs
 - Navigation: `Chamberings` (VariantCartridge)
@@ -208,9 +208,9 @@ Filter params accept comma-separated values: **OR within** a param, **AND across
 - `GET /api/firearms`: list/search. Query params (all optional, all combinable):
   - `q` (full-text + trigram fallback), `tag` (tag slugs), `country` (country slugs), `designer` (person or organization slugs), `manufacturer` (org slugs), `cartridge` (cartridge slugs), `mechanism` (mechanism slugs, include descendants), `designedFrom` / `designedTo` (year, overlap semantics), `sort` (`name`, `designYear`, `-designYear`, `relevance` default when `q` is set), `page`, `pageSize` (max 100)
   - Returns `FirearmListItemDto`: slug, name, tags, country, designYear + precision + isApproximate, mechanism name, primary cartridge name (base variant's primary chambering), thumbnail URL (null when no media)
-- `GET /api/firearms/{slug}`: full detail: all fields, variants with specs and chamberings, designers with roles, manufacturers, adoptions, direct relations (both directions), approved videos, citations, Wikipedia attribution fields. Unknown slug → check `SlugRedirect` → `{ "redirectTo": "<slug>" }` with 301-equivalent semantics for the frontend, else 404.
+- `GET /api/firearms/{slug}`: full detail: all fields, variants with specs and chamberings, designers with roles, manufacturers, adoptions, direct relations (both directions), approved videos, citations, Wikipedia attribution fields. Unknown slug → check `SlugRedirect` → **301** with `Location: /api/firearms/<current-slug>` (the frontend fetches with `redirect: "manual"` and turns it into `permanentRedirect()`), else 404. Approved videos and citations join the DTO in Phase 3, when those entities exist.
 - `GET /api/firearms/{slug}/family-tree?depth=3`: nodes + edges of `DerivedFrom` relations up and down from this firearm (for React Flow). Traversal keeps a visited set: imported relations may contain cycles.
-- `GET /api/firearms/compare?slugs=a,b,c`: up to 4 base variants with specs side by side
+- `GET /api/firearms/compare?slugs=a,b,c`: up to 4 base variants with specs side by side, in the requested order. 400 for none or more than 4; 404 if any slug is unknown or draft (renamed slugs are not followed).
 - `GET /api/firearms/facets`: counts per tag (grouped), country, mechanism, decade. Accepts the same filters as the list endpoint. **Disjunctive faceting:** each facet's counts apply every filter *except its own*, so selecting "carbine" doesn't zero out the other tag counts.
 
 ### Other resources
@@ -247,7 +247,7 @@ Write endpoints come in Phase 3 (admin).
 - Detail pages: Next 16 **Cache Components** (`cacheComponents: true` in `next.config.ts`). Data loaders are `"use cache"` functions with `cacheLife('hours')` and `cacheTag(...)` (`firearm:<slug>`, `firearms:list`, `person:<slug>`, …), plus `generateMetadata` for title/description/OpenGraph. Route segment configs like `export const revalidate` are not allowed with Cache Components; read `node_modules/next/dist/docs/01-app/02-guides/migrating-to-cache-components.md` before Phase 5.
 - **On-demand revalidation:** a secret-protected route `POST /api/revalidate` (Next route handler; Caddy routes it to Next, not the API) takes a list of tags. The API calls it after every admin write and after each import batch.
 - **Units:** the server always renders **metric**. The Metric/Imperial toggle is a small client component that stores the choice in `localStorage` and swaps displayed values after hydration. Never read cookies in Server Components for this; it would make pages dynamic.
-- **Redirects:** when the API returns `redirectTo`, the page calls `permanentRedirect()` to the new slug.
+- **Redirects:** API detail endpoints answer a renamed slug with **301** + `Location`; fetch with `redirect: "manual"` and call `permanentRedirect()` to the new slug.
 - **Attribution:** firearm pages with `WikipediaTitle` show "Text adapted from Wikipedia: <link to that revision>, CC BY-SA 4.0". The site footer states the CC BY-SA 4.0 license for prose.
 - **Dev proxy:** `next.config` `rewrites` forward `/api/*` (except `/api/revalidate`) to the backend in development, so the browser always talks to one origin. No CORS needed.
 
@@ -290,7 +290,7 @@ Write endpoints come in Phase 3 (admin).
 - [ ] Use projections (`Select` into DTOs). No returning entities, no lazy loading.
 - [ ] Filtering implemented as composable `IQueryable<Firearm>` extension methods (one per filter), each taking a list of values
 - [ ] Disjunctive facet counts (§4)
-- [ ] Full-text search via the `tsvector` column (`WebSearchToTsQuery` with `simple`, ranked by `ts_rank`), falling back to trigram **`word_similarity`** (`<%` operator, served by the `search_names` GIN index) on name/aliases when FTS finds nothing. Plain `similarity()` is too low on the concatenated column ("ak47" vs AK-47 scores 0.10; `word_similarity` scores 0.60). Credits whose Person/Organization is Draft come back with a null party under the filters, so skip them in projections
+- [ ] Full-text search via the `tsvector` column (`WebSearchToTsQuery` with `simple`, ranked by `ts_rank`), falling back to trigram **`word_similarity`** (`word_similarity(q, search_names) >= 0.5`; a function call, so no index use, fine at this scale; switch to the `<%` operator if it gets slow) on name/aliases when FTS finds nothing. Plain `similarity()` is too low on the concatenated column ("ak47" vs AK-47 scores 0.10; `word_similarity` scores 0.60). Credits whose Person/Organization is Draft come back with a null party under the filters, so skip them in projections
 - [ ] Family tree: load relations iteratively up to `depth` (max 5) with a visited set; return `{ nodes: [...], edges: [...] }`
 - [ ] Pagination + `pageSize` clamp; `SlugRedirect` lookup then 404 ProblemDetails for unknown slugs
 - [ ] OpenAPI document + Scalar UI in Development
@@ -306,7 +306,7 @@ Write endpoints come in Phase 3 (admin).
 - [ ] Every admin update appends changed field names to `LockedFields`
 - [ ] Slug changes write a `SlugRedirect` row; slug auto-generated from name when not supplied, with collision suffix (`-2`)
 - [ ] Publish endpoint enforcing the publish gate (§3.3); admin list endpoint exposes "missing for publish" fields
-- [ ] FluentValidation for all write DTOs (slug format `^[a-z0-9]+(-[a-z0-9]+)*$`, positive measurements, `FuzzyDate` consistency: Month 1–12, Day valid for month, `YearTo >= Year`)
+- [ ] FluentValidation for all write DTOs (slug format `^[a-z0-9]+(-[a-z0-9]+)*$`; firearm slugs `facets` and `compare` are reserved because they are API routes; positive measurements, `FuzzyDate` consistency: Month 1–12, Day valid for month, `YearTo >= Year`)
 - [ ] **Source**, **Citation**, **Media**, **VideoReference** entities from §3.5 + migration + admin endpoints (incl. approve/reject for videos)
 - [ ] File store: a single `FileStore` class writing to a configured directory (Docker volume); image upload endpoint generates thumbnail + medium (ImageSharp)
 - [ ] Antiforgery/CSRF protection for cookie-authenticated writes

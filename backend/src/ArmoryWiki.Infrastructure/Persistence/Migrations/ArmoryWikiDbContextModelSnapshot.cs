@@ -808,9 +808,9 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("magazine_capacity_standard");
 
-                    b.Property<int?>("MuzzleVelocityMs")
+                    b.Property<int?>("MuzzleVelocityMps")
                         .HasColumnType("integer")
-                        .HasColumnName("muzzle_velocity_ms");
+                        .HasColumnName("muzzle_velocity_mps");
 
                     b.Property<string>("Name")
                         .IsRequired()
