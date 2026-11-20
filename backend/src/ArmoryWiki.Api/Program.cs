@@ -19,6 +19,7 @@ if (app.Environment.IsDevelopment())
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<ArmoryWikiDbContext>();
     await db.Database.MigrateAsync();
+    await ReferenceDataSeeder.SeedAsync(db); // production runs this in the migrate container too
     await DevelopmentSeeder.SeedAsync(db);
 }
 

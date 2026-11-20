@@ -2,6 +2,8 @@
 
 > A structured, encyclopedic database of firearms: design history, designers, specifications, cartridges and operating mechanisms, with filtered search, family trees and timelines.
 >
+> **Vocabulary:** domain terms (firearm vs variant, design date, country of origin, designer roles, relation types, spec definitions) are defined in `GLOSSARY.md`. Use them exactly.
+>
 > **For Claude Code:** Work through this plan one phase at a time. Each phase ends with a "Done when" checklist: verify every item (build, run, test) before starting the next phase. Don't skip ahead or add features that aren't listed here. If something in this plan is ambiguous, ask before guessing. Big decisions are recorded as ADRs in `docs/adr/`; don't contradict them silently.
 
 ---
@@ -103,7 +105,7 @@ Year filters use **overlap**: an item matches `[from, to]` when `Year <= to AND 
 - `CountryOfOriginId?` → Country
 - `DesignDate` (FuzzyDate?), `ProductionStart` (FuzzyDate?), `ProductionEnd` (FuzzyDate?)
 - `OperatingMechanismId?` → OperatingMechanism
-- `FeedSystem?` (enum: DetachableBoxMagazine, InternalMagazine, Belt, Drum, Tubular, Cylinder, StripperClip, EnBlocClip, Single, Other)
+- `FeedSystem?` (enum: DetachableBoxMagazine, InternalMagazine, Belt, Drum, Tubular, Cylinder, StripperClip, EnBlocClip, SingleShot, Other)
 - `Summary` (short plain text, ≤ 500 chars), `DevelopmentHistory` (Markdown), `ServiceHistory` (Markdown)
 - `WikipediaTitle?`, `WikipediaRevisionId?` (long?): set when prose was adapted from Wikipedia; drives the attribution footer
 - Navigation: `Variants`, `Designers` (FirearmDesigner), `Manufacturers` (FirearmManufacturer), `RelationsFrom` / `RelationsTo` (FirearmRelation), `Adoptions`, `Media`, `Videos` (VideoReference)
@@ -113,14 +115,14 @@ Year filters use **overlap**: an item matches `[from, to]` when `Year <= to AND 
 - `Id`, `FirearmId`, `Slug` (unique per firearm), `Name`, `IsBaseVariant` (bool; exactly one per firearm)
 - `IntroducedDate` (FuzzyDate?)
 - Specs, all nullable: `WeightEmptyG`, `OverallLengthMm`, `OverallLengthFoldedMm`, `BarrelLengthMm`, `RateOfFireMinRpm`, `RateOfFireMaxRpm`, `MuzzleVelocityMs`, `EffectiveRangeM`, `MagazineCapacityStandard`
-- `FiringModes` (flags enum: Single, Burst, Automatic)
+- `FiringModes` (flags enum: SemiAutomatic, Burst, Automatic; `None` for manually operated firearms)
 - `ExtraSpecs` (`jsonb`, `Dictionary<string, string>`) for rare/odd specs
 - Navigation: `Chamberings` (VariantCartridge)
 - Creating a firearm always creates its base variant in the same transaction, so "exactly one" always holds. Enforced by a partial unique index on `(firearm_id) WHERE is_base_variant`.
 
 **Tag** (controlled vocabulary, admin-managed; ADR-0005)
 - `Id`, `Slug`, `Name`, `Group` (enum: Type, Role, Era)
-- Examples: Type: Handgun, Revolver, SubmachineGun, Rifle, Carbine, AssaultRifle, BattleRifle, Shotgun, MachineGun; Role: DesignatedMarksman, Sniper, PersonalDefense; Era: WW1, WW2, ColdWar
+- Examples: Type: Handgun, Revolver, SubmachineGun, Rifle, Carbine, AssaultRifle, BattleRifle, Shotgun, MachineGun; Role: DesignatedMarksman, Sniper, PersonalDefense; Era: WW1, WW2, ColdWar, PostColdWar (an era tag means significant service in that period)
 - `FirearmTag` (`FirearmId`, `TagId`), PK (FirearmId, TagId)
 - `WikidataClassTagMap` (`Qid`, `TagId`), PK (Qid, TagId): maps Wikidata "instance of" classes to tags during import
 
@@ -158,10 +160,10 @@ Year filters use **overlap**: an item matches `[from, to]` when `Year <= to AND 
 
 | Entity | Fields | Key / rules |
 |---|---|---|
-| `FirearmDesigner` | `Id`, `FirearmId`, `PersonId?`, `OrganizationId?`, `Role` (enum: LeadDesigner, CoDesigner, Refinement) | Check: exactly one of PersonId / OrganizationId. Unique `NULLS NOT DISTINCT` (FirearmId, PersonId, OrganizationId, Role) |
+| `FirearmDesigner` | `Id`, `FirearmId`, `PersonId?`, `OrganizationId?`, `Role` (enum: LeadDesigner, CoDesigner, Developer) | Check: exactly one of PersonId / OrganizationId. Unique `NULLS NOT DISTINCT` (FirearmId, PersonId, OrganizationId, Role) |
 | `FirearmManufacturer` | `Id`, `FirearmId`, `OrganizationId`, `From` (FuzzyDate?), `To` (FuzzyDate?), `IsLicensed` (bool) | Surrogate key: same org can appear for several periods |
 | `VariantCartridge` | `VariantId`, `CartridgeId`, `IsPrimary` (bool) | PK (VariantId, CartridgeId); partial unique index `(variant_id) WHERE is_primary` |
-| `FirearmRelation` | `FromFirearmId`, `ToFirearmId`, `Type` (enum: DerivedFrom, InfluencedBy, CompetedAgainst, Replaced), `Note` | PK (From, To, Type); check `From <> To` |
+| `FirearmRelation` | `FromFirearmId`, `ToFirearmId`, `Type` (enum: DerivedFrom, CopyOf, InfluencedBy, CompetedAgainst, Replaced), `Note` | PK (From, To, Type); check `From <> To` |
 | `Adoption` | `Id`, `FirearmId`, `CountryId`, `From` (FuzzyDate?), `To` (FuzzyDate?), `Note` | Surrogate key: a country can re-adopt |
 
 `FirearmRelation` direction: "AKM **DerivedFrom** AK-47" is stored as From=AKM, To=AK-47. "M16 **Replaced** M14" is stored as From=M16, To=M14.
@@ -271,7 +273,8 @@ Write endpoints come in Phase 3 (admin).
 - [ ] Indexes from §3.7, including check constraints, partial unique indexes, the immutable wrapper function, the weighted `tsvector` column + GIN index, and `pg_trgm` indexes (raw SQL in the migration where EF can't express it)
 - [ ] Automatic `CreatedAt`/`UpdatedAt` in `SaveChangesAsync`
 - [ ] Initial migration
-- [ ] **Seeder** (runs in Development on startup if DB is empty) using hand-written seed data under `Infrastructure/Seed/`. Every seeded firearm, person, organization, cartridge and country carries its **real Wikidata QID**. Look each QID up; never guess one. All seeded rows are `Published`.
+- [ ] **Reference data** (`ReferenceDataSeeder`: mechanism tree, tags, Wikidata class → tag map) inserted when missing after every migration, in every environment
+- [ ] **Sample seeder** (runs in Development on startup if DB is empty) using hand-written seed data under `Infrastructure/Seed/`. Every seeded firearm, person, organization, cartridge and country carries its **real Wikidata QID**. Look each QID up; never guess one. All seeded rows are `Published`.
   - Countries (incl. historical: USSR, East Germany, West Germany, Czechoslovakia, Yugoslavia, Nazi Germany / German Reich)
   - Full operating mechanism tree from §3.3 with short explanations, and `Path` populated
   - Tags from §3.3 plus initial `WikidataClassTagMap` rows for the obvious classes (assault rifle, battle rifle, carbine, submachine gun, pistol, revolver, machine gun, shotgun, sniper rifle)
@@ -348,7 +351,7 @@ Shared rules:
 
 ### Phase 6: Deploy
 - [ ] Dockerfiles for API and frontend (multi-stage, non-root)
-- [ ] `deploy/docker-compose.prod.yml`: `caddy`, `web`, `api`, `postgres`, one-shot `migrate` (runs EF migrations via an idempotent migration bundle before `api` starts; **never** migrate on API startup in production), media volume
+- [ ] `deploy/docker-compose.prod.yml`: `caddy`, `web`, `api`, `postgres`, one-shot `migrate` (runs EF migrations via an idempotent migration bundle, then `ReferenceDataSeeder`, before `api` starts; **never** migrate on API startup in production), media volume
 - [ ] `deploy/Caddyfile`: automatic TLS; `/api/revalidate` → web; `/api/*` → api; `/media/*` → media volume with long cache headers; everything else → web
 - [ ] GitHub Actions: build + test on PR; on `main`, build images → push to GHCR → SSH to the VPS → `docker compose pull && docker compose up -d`
 - [ ] Secrets via a `.env` on the VPS (never committed); admin credentials, DB password, revalidate secret, YouTube API key, import contact email

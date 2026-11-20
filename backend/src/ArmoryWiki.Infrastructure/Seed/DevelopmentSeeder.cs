@@ -39,74 +39,24 @@ public static class DevelopmentSeeder
         var belgium = AddCountry("belgium", "Belgium", "Q31", "BE");
         AddCountry("united-kingdom", "United Kingdom", "Q145", "GB");
 
-        // Operating mechanisms
-        OperatingMechanism AddMechanism(string slug, string name, OperatingMechanism? parent, string explanation)
-        {
-            var m = new OperatingMechanism
-            {
-                Slug = slug,
-                Name = name,
-                Parent = parent,
-                Path = $"{parent?.Path ?? "/"}{slug}/",
-                Explanation = explanation,
-            };
-            db.OperatingMechanisms.Add(m);
-            return m;
-        }
-        var manual = AddMechanism("manual", "Manual", null, "The shooter cycles the action by hand between shots.");
-        var boltAction = AddMechanism("bolt-action", "Bolt action", manual, "A bolt is lifted, drawn back and pushed forward by hand to extract, eject, chamber and lock.");
-        AddMechanism("lever-action", "Lever action", manual, "A lever beneath the receiver, usually around the trigger guard, cycles the action.");
-        AddMechanism("pump-action", "Pump action", manual, "A sliding fore-end is pulled back and pushed forward to cycle the action.");
-        AddMechanism("break-action", "Break action", manual, "The barrels hinge open for manual loading and unloading.");
-        var blowback = AddMechanism("blowback", "Blowback", null, "Pressure from the fired cartridge pushes the case, and with it the bolt, rearward to cycle the action.");
-        AddMechanism("simple-blowback", "Simple blowback", blowback, "The bolt is held closed only by its own mass and a spring; there is no lock or delay.");
-        AddMechanism("advanced-primer-ignition", "Advanced primer ignition", blowback, "The cartridge fires while the bolt is still moving forward, so part of the recoil impulse is spent stopping the bolt.");
-        AddMechanism("roller-delayed-blowback", "Roller-delayed blowback", blowback, "Rollers in the bolt head must be cammed inward before the bolt can move rearward, delaying its opening.");
-        AddMechanism("lever-delayed-blowback", "Lever-delayed blowback", blowback, "A lever at mechanical disadvantage must be moved before the bolt can travel rearward.");
-        AddMechanism("gas-delayed-blowback", "Gas-delayed blowback", blowback, "Gas bled from the barrel acts against the slide or bolt, slowing its rearward travel.");
-        var recoil = AddMechanism("recoil-operated", "Recoil-operated", null, "The barrel and bolt recoil together while locked, then unlock; recoil energy cycles the action.");
-        var shortRecoil = AddMechanism("short-recoil", "Short recoil", recoil, "Barrel and bolt travel back together a short distance before unlocking; the bolt then continues alone.");
-        AddMechanism("long-recoil", "Long recoil", recoil, "Barrel and bolt recoil together for at least the length of a cartridge before unlocking.");
-        var gas = AddMechanism("gas-operated", "Gas-operated", null, "Propellant gas tapped from the barrel drives the mechanism that unlocks and cycles the action.");
-        var longStroke = AddMechanism("long-stroke-piston", "Long-stroke piston", gas, "The gas piston is attached to the bolt carrier and travels with it through the full cycle.");
-        var shortStroke = AddMechanism("short-stroke-piston", "Short-stroke piston", gas, "The gas piston moves only a short distance, imparting a push to the bolt carrier, which completes the cycle by momentum.");
-        var directImpingement = AddMechanism("direct-impingement", "Direct impingement", gas, "Gas is routed through a tube directly to the bolt carrier, which acts as the piston; there is no separate piston.");
-        AddMechanism("gas-trap", "Gas trap", gas, "Gas is captured by a cup or trap at the muzzle rather than through a port in the barrel.");
+        // Mechanisms and tags come from ReferenceDataSeeder, which runs first.
+        var mechanisms = await db.OperatingMechanisms.ToDictionaryAsync(m => m.Slug, ct);
+        var boltAction = mechanisms["bolt-action"];
+        var shortRecoil = mechanisms["short-recoil"];
+        var longStroke = mechanisms["long-stroke-piston"];
+        var shortStroke = mechanisms["short-stroke-piston"];
+        var directImpingement = mechanisms["direct-impingement"];
 
-        // Tags
-        Tag AddTag(string slug, string name, TagGroup group)
-        {
-            var t = new Tag { Slug = slug, Name = name, Group = group };
-            db.Tags.Add(t);
-            return t;
-        }
-        var handgun = AddTag("handgun", "Handgun", TagGroup.Type);
-        var revolver = AddTag("revolver", "Revolver", TagGroup.Type);
-        var smg = AddTag("submachine-gun", "Submachine gun", TagGroup.Type);
-        var rifle = AddTag("rifle", "Rifle", TagGroup.Type);
-        var carbine = AddTag("carbine", "Carbine", TagGroup.Type);
-        var assaultRifle = AddTag("assault-rifle", "Assault rifle", TagGroup.Type);
-        var battleRifle = AddTag("battle-rifle", "Battle rifle", TagGroup.Type);
-        var shotgun = AddTag("shotgun", "Shotgun", TagGroup.Type);
-        var machineGun = AddTag("machine-gun", "Machine gun", TagGroup.Type);
-        AddTag("designated-marksman", "Designated marksman", TagGroup.Role);
-        var sniper = AddTag("sniper", "Sniper", TagGroup.Role);
-        AddTag("personal-defense", "Personal defense", TagGroup.Role);
-        var ww1 = AddTag("ww1", "World War I", TagGroup.Era);
-        var ww2 = AddTag("ww2", "World War II", TagGroup.Era);
-        var coldWar = AddTag("cold-war", "Cold War", TagGroup.Era);
-
-        void MapClassToTag(string qid, Tag tag) => db.WikidataClassTagMaps.Add(new WikidataClassTagMap { Qid = qid, Tag = tag });
-        MapClassToTag("Q177456", assaultRifle);
-        MapClassToTag("Q1194268", battleRifle);
-        MapClassToTag("Q183302", carbine);
-        MapClassToTag("Q178550", smg);
-        MapClassToTag("Q1907525", handgun); // pistol
-        MapClassToTag("Q1574963", handgun);
-        MapClassToTag("Q170382", revolver);
-        MapClassToTag("Q12800", machineGun);
-        MapClassToTag("Q486396", shotgun);
-        MapClassToTag("Q190570", sniper);
+        var tags = await db.Tags.ToDictionaryAsync(t => t.Slug, ct);
+        var handgun = tags["handgun"];
+        var rifle = tags["rifle"];
+        var carbine = tags["carbine"];
+        var assaultRifle = tags["assault-rifle"];
+        var battleRifle = tags["battle-rifle"];
+        var ww1 = tags["ww1"];
+        var ww2 = tags["ww2"];
+        var coldWar = tags["cold-war"];
+        var postColdWar = tags["post-cold-war"];
 
         // Cartridges
         Cartridge AddCartridge(string slug, string name, string qid, CartridgeType type, Country origin, int? year = null,
@@ -217,8 +167,8 @@ public static class DevelopmentSeeder
             db.Firearms.Add(f);
             return f;
         }
-        const FiringModes semiAuto = FiringModes.Single;
-        const FiringModes selectFire = FiringModes.Single | FiringModes.Automatic;
+        const FiringModes semiAuto = FiringModes.SemiAutomatic;
+        const FiringModes selectFire = FiringModes.SemiAutomatic | FiringModes.Automatic;
         const FeedSystem boxMagazine = FeedSystem.DetachableBoxMagazine;
 
         var ak47 = AddFirearm("ak-47", "AK-47", "Q37116", ussr, FuzzyDate.InYear(1947), longStroke, boxMagazine, cartridge762x39, 30, selectFire,
@@ -227,12 +177,12 @@ public static class DevelopmentSeeder
         var akm = AddFirearm("akm", "AKM", "Q432662", ussr, new FuzzyDate { Year = 1950, Precision = DatePrecision.Decade }, longStroke, boxMagazine, cartridge762x39, 30, selectFire,
             [assaultRifle, coldWar], "Modernized, lighter development of the AK-47.", "Avtomat Kalashnikova Modernizirovanny");
         var ak74 = AddFirearm("ak-74", "AK-74", "Q156229", ussr, FuzzyDate.InYear(1974), longStroke, boxMagazine, cartridge545x39, 30, selectFire,
-            [assaultRifle, coldWar], "Soviet assault rifle developed from the AKM for the 5.45×39mm cartridge.");
+            [assaultRifle, coldWar, postColdWar], "Soviet assault rifle developed from the AKM for the 5.45×39mm cartridge.");
         var sks = AddFirearm("sks", "SKS", "Q482594", ussr, FuzzyDate.InYear(1945), shortStroke, FeedSystem.InternalMagazine, cartridge762x39, 10, semiAuto,
-            [carbine, coldWar], "Soviet semiAuto-automatic carbine chambered in 7.62×39mm, designed by Sergei Simonov.",
+            [carbine, coldWar], "Soviet semi-automatic carbine chambered in 7.62×39mm, designed by Sergei Simonov.",
             "Samozaryadny Karabin sistemy Simonova");
         var garandRifle = AddFirearm("m1-garand", "M1 Garand", "Q204046", usa, null, longStroke, FeedSystem.EnBlocClip, springfield3006, 8, semiAuto,
-            [rifle, ww2], "American semiAuto-automatic service rifle designed by John Garand, fed from an eight-round en bloc clip.",
+            [rifle, ww2], "American semi-automatic service rifle designed by John Garand, fed from an eight-round en bloc clip.",
             "M1 rifle", "United States Rifle, Caliber .30, M1");
         var m14 = AddFirearm("m14", "M14", "Q15082", usa, FuzzyDate.InYear(1957), shortStroke, boxMagazine, nato762, 20, selectFire,
             [battleRifle, coldWar], "American select-fire battle rifle chambered in 7.62×51mm NATO, developed from the M1 Garand.",
@@ -242,9 +192,9 @@ public static class DevelopmentSeeder
         var ar15 = AddFirearm("ar-15", "AR-15", "Q1073847", usa, FuzzyDate.InYear(1957), directImpingement, boxMagazine, rem223, 20, selectFire,
             [assaultRifle, coldWar], "ArmaLite's scaled-down development of the AR-10 for a small-calibre cartridge.", "ArmaLite AR-15");
         var m16 = AddFirearm("m16", "M16", "Q170318", usa, null, directImpingement, boxMagazine, nato556, null, selectFire,
-            [assaultRifle, coldWar], "American military adaptation of the ArmaLite AR-15.", "M16 rifle");
-        var m4 = AddFirearm("m4-carbine", "M4 carbine", "Q214688", usa, null, directImpingement, boxMagazine, nato556, 30, FiringModes.Single | FiringModes.Burst,
-            [carbine, assaultRifle], "Shorter, lighter carbine variant of the M16 family.", "M4");
+            [assaultRifle, coldWar, postColdWar], "American military adaptation of the ArmaLite AR-15.", "M16 rifle");
+        var m4 = AddFirearm("m4-carbine", "M4 carbine", "Q214688", usa, null, directImpingement, boxMagazine, nato556, 30, FiringModes.SemiAutomatic | FiringModes.Burst,
+            [carbine, assaultRifle, postColdWar], "Shorter, lighter carbine variant of the M16 family.", "M4");
         var stg44 = AddFirearm("stg-44", "StG 44", "Q151877", naziGermany, FuzzyDate.InYear(1942), longStroke, boxMagazine, kurz, 30, selectFire,
             [assaultRifle, ww2], "German select-fire rifle chambered in 7.92×33mm Kurz, designed by Hugo Schmeisser.",
             "Sturmgewehr 44", "MP 43", "MP 44");
@@ -253,8 +203,8 @@ public static class DevelopmentSeeder
         var m1911 = AddFirearm("m1911", "M1911", "Q201419", usa, null, shortRecoil, boxMagazine, acp45, 7, semiAuto,
             [handgun, ww1, ww2], "Semi-automatic pistol designed by John Browning, chambered in .45 ACP.", "Colt M1911", "Colt Government");
         var lugerP08 = AddFirearm("luger-p08", "Luger P08", "Q154199", germanEmpire, FuzzyDate.InYear(1898), shortRecoil, boxMagazine, nineMm, 8, semiAuto,
-            [handgun, ww1, ww2], "Toggle-locked semiAuto-automatic pistol designed by Georg Luger.", "Parabellum-Pistole", "Pistole 08");
-        var kar98k = AddFirearm("karabiner-98k", "Karabiner 98k", "Q60134", naziGermany, FuzzyDate.InYear(1935), boltAction, FeedSystem.InternalMagazine, mauser792, 5, semiAuto,
+            [handgun, ww1, ww2], "Toggle-locked semi-automatic pistol designed by Georg Luger.", "Parabellum-Pistole", "Pistole 08");
+        var kar98k = AddFirearm("karabiner-98k", "Karabiner 98k", "Q60134", naziGermany, FuzzyDate.InYear(1935), boltAction, FeedSystem.InternalMagazine, mauser792, 5, FiringModes.None,
             [rifle, ww2], "German bolt-action rifle chambered in 7.92×57mm Mauser.", "K98k", "Kar98k", "Karabiner 98 kurz");
 
         // Designers

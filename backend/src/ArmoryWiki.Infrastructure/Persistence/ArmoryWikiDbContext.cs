@@ -12,7 +12,12 @@ public sealed class ArmoryWikiDbContext(DbContextOptions<ArmoryWikiDbContext> op
 
     public DbSet<Firearm> Firearms => Set<Firearm>();
     public DbSet<Variant> Variants => Set<Variant>();
+    public DbSet<VariantCartridge> VariantCartridges => Set<VariantCartridge>();
+    public DbSet<FirearmTag> FirearmTags => Set<FirearmTag>();
+    public DbSet<FirearmDesigner> FirearmDesigners => Set<FirearmDesigner>();
+    public DbSet<FirearmManufacturer> FirearmManufacturers => Set<FirearmManufacturer>();
     public DbSet<FirearmRelation> FirearmRelations => Set<FirearmRelation>();
+    public DbSet<Adoption> Adoptions => Set<Adoption>();
     public DbSet<Person> People => Set<Person>();
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<Country> Countries => Set<Country>();

@@ -1,3 +1,5 @@
+using ArmoryWiki.Domain;
+using ArmoryWiki.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArmoryWiki.Api.Tests;
@@ -12,7 +14,7 @@ public sealed class SeedDataTests(DatabaseFixture fixture)
 
         Assert.Equal(13, await db.Countries.CountAsync());
         Assert.Equal(19, await db.OperatingMechanisms.CountAsync());
-        Assert.Equal(15, await db.Tags.CountAsync());
+        Assert.Equal(16, await db.Tags.CountAsync());
         Assert.Equal(12, await db.Cartridges.CountAsync());
         Assert.Equal(6, await db.People.CountAsync());
         Assert.Equal(7, await db.Organizations.CountAsync());
@@ -23,5 +25,38 @@ public sealed class SeedDataTests(DatabaseFixture fixture)
             .CountAsync(f => f.Variants.Count(v => v.IsBaseVariant) == 1
                 && f.Variants.Any(v => v.IsBaseVariant && v.Chamberings.Any(c => c.IsPrimary)));
         Assert.Equal(15, firearmsWithBaseAndPrimary);
+    }
+
+    [Fact]
+    public async Task Manually_operated_firearms_have_no_firing_modes()
+    {
+        await using var db = fixture.NewDbContext();
+
+        var modes = await db.Variants
+            .Where(v => v.IsBaseVariant && v.Firearm.OperatingMechanism!.Path.StartsWith("/manual/"))
+            .Select(v => v.FiringModes)
+            .ToListAsync();
+
+        Assert.NotEmpty(modes); // the Kar98k
+        Assert.All(modes, m => Assert.Equal(FiringModes.None, m));
+    }
+
+    [Fact]
+    public async Task Reference_data_seeding_restores_missing_entries_and_is_idempotent()
+    {
+        await using var db = fixture.NewDbContext();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var mechanismCount = await db.OperatingMechanisms.CountAsync();
+        var mapCount = await db.WikidataClassTagMaps.CountAsync();
+        db.Tags.Remove(await db.Tags.SingleAsync(t => t.Slug == "post-cold-war"));
+        db.WikidataClassTagMaps.Remove(await db.WikidataClassTagMaps.FirstAsync());
+        await db.SaveChangesAsync();
+
+        await ReferenceDataSeeder.SeedAsync(db);
+        await ReferenceDataSeeder.SeedAsync(db);
+
+        Assert.Equal(16, await db.Tags.CountAsync());
+        Assert.Equal(mechanismCount, await db.OperatingMechanisms.CountAsync());
+        Assert.Equal(mapCount, await db.WikidataClassTagMaps.CountAsync());
     }
 }

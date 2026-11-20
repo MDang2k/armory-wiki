@@ -55,15 +55,15 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_adoption");
+                        .HasName("pk_adoptions");
 
                     b.HasIndex("CountryId")
-                        .HasDatabaseName("ix_adoption_country_id");
+                        .HasDatabaseName("ix_adoptions_country_id");
 
                     b.HasIndex("FirearmId")
-                        .HasDatabaseName("ix_adoption_firearm_id");
+                        .HasDatabaseName("ix_adoptions_firearm_id");
 
-                    b.ToTable("adoption", (string)null);
+                    b.ToTable("adoptions", (string)null);
                 });
 
             modelBuilder.Entity("ArmoryWiki.Domain.Cartridge", b =>
@@ -374,21 +374,21 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_firearm_designer");
+                        .HasName("pk_firearm_designers");
 
                     b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_firearm_designer_organization_id");
+                        .HasDatabaseName("ix_firearm_designers_organization_id");
 
                     b.HasIndex("PersonId")
-                        .HasDatabaseName("ix_firearm_designer_person_id");
+                        .HasDatabaseName("ix_firearm_designers_person_id");
 
                     b.HasIndex("FirearmId", "PersonId", "OrganizationId", "Role")
                         .IsUnique()
-                        .HasDatabaseName("ix_firearm_designer_firearm_id_person_id_organization_id_role");
+                        .HasDatabaseName("ix_firearm_designers_firearm_id_person_id_organization_id_role");
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("FirearmId", "PersonId", "OrganizationId", "Role"), false);
 
-                    b.ToTable("firearm_designer", null, t =>
+                    b.ToTable("firearm_designers", null, t =>
                         {
                             t.HasCheckConstraint("ck_firearm_designers_person_xor_organization", "num_nonnulls(person_id, organization_id) = 1");
                         });
@@ -424,15 +424,15 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
-                        .HasName("pk_firearm_manufacturer");
+                        .HasName("pk_firearm_manufacturers");
 
                     b.HasIndex("FirearmId")
-                        .HasDatabaseName("ix_firearm_manufacturer_firearm_id");
+                        .HasDatabaseName("ix_firearm_manufacturers_firearm_id");
 
                     b.HasIndex("OrganizationId")
-                        .HasDatabaseName("ix_firearm_manufacturer_organization_id");
+                        .HasDatabaseName("ix_firearm_manufacturers_organization_id");
 
-                    b.ToTable("firearm_manufacturer", (string)null);
+                    b.ToTable("firearm_manufacturers", (string)null);
                 });
 
             modelBuilder.Entity("ArmoryWiki.Domain.FirearmRelation", b =>
@@ -492,12 +492,12 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("FirearmId", "TagId")
-                        .HasName("pk_firearm_tag");
+                        .HasName("pk_firearm_tags");
 
                     b.HasIndex("TagId")
-                        .HasDatabaseName("ix_firearm_tag_tag_id");
+                        .HasDatabaseName("ix_firearm_tags_tag_id");
 
-                    b.ToTable("firearm_tag", (string)null);
+                    b.ToTable("firearm_tags", (string)null);
                 });
 
             modelBuilder.Entity("ArmoryWiki.Domain.OperatingMechanism", b =>
@@ -884,17 +884,17 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasColumnName("updated_at");
 
                     b.HasKey("VariantId", "CartridgeId")
-                        .HasName("pk_variant_cartridge");
+                        .HasName("pk_variant_cartridges");
 
                     b.HasIndex("CartridgeId")
-                        .HasDatabaseName("ix_variant_cartridge_cartridge_id");
+                        .HasDatabaseName("ix_variant_cartridges_cartridge_id");
 
                     b.HasIndex("VariantId")
                         .IsUnique()
                         .HasDatabaseName("ux_variant_cartridges_one_primary_per_variant")
                         .HasFilter("is_primary");
 
-                    b.ToTable("variant_cartridge", (string)null);
+                    b.ToTable("variant_cartridges", (string)null);
                 });
 
             modelBuilder.Entity("ArmoryWiki.Domain.WikidataClassTagMap", b =>
@@ -931,14 +931,14 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CountryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_adoption_countries_country_id");
+                        .HasConstraintName("fk_adoptions_countries_country_id");
 
                     b.HasOne("ArmoryWiki.Domain.Firearm", "Firearm")
                         .WithMany("Adoptions")
                         .HasForeignKey("FirearmId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_adoption_firearms_firearm_id");
+                        .HasConstraintName("fk_adoptions_firearms_firearm_id");
 
                     b.OwnsOne("ArmoryWiki.Domain.FuzzyDate", "From", b1 =>
                         {
@@ -973,11 +973,11 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
 
                             b1.HasKey("AdoptionId");
 
-                            b1.ToTable("adoption");
+                            b1.ToTable("adoptions");
 
                             b1.WithOwner()
                                 .HasForeignKey("AdoptionId")
-                                .HasConstraintName("fk_adoption_adoption_id");
+                                .HasConstraintName("fk_adoptions_adoptions_id");
                         });
 
                     b.OwnsOne("ArmoryWiki.Domain.FuzzyDate", "To", b1 =>
@@ -1013,11 +1013,11 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
 
                             b1.HasKey("AdoptionId");
 
-                            b1.ToTable("adoption");
+                            b1.ToTable("adoptions");
 
                             b1.WithOwner()
                                 .HasForeignKey("AdoptionId")
-                                .HasConstraintName("fk_adoption_adoption_id");
+                                .HasConstraintName("fk_adoptions_adoptions_id");
                         });
 
                     b.Navigation("Country");
@@ -1241,17 +1241,17 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasForeignKey("FirearmId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_firearm_designer_firearms_firearm_id");
+                        .HasConstraintName("fk_firearm_designers_firearms_firearm_id");
 
                     b.HasOne("ArmoryWiki.Domain.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
-                        .HasConstraintName("fk_firearm_designer_organizations_organization_id");
+                        .HasConstraintName("fk_firearm_designers_organizations_organization_id");
 
                     b.HasOne("ArmoryWiki.Domain.Person", "Person")
                         .WithMany()
                         .HasForeignKey("PersonId")
-                        .HasConstraintName("fk_firearm_designer_people_person_id");
+                        .HasConstraintName("fk_firearm_designers_people_person_id");
 
                     b.Navigation("Firearm");
 
@@ -1267,14 +1267,14 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasForeignKey("FirearmId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_firearm_manufacturer_firearms_firearm_id");
+                        .HasConstraintName("fk_firearm_manufacturers_firearms_firearm_id");
 
                     b.HasOne("ArmoryWiki.Domain.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_firearm_manufacturer_organizations_organization_id");
+                        .HasConstraintName("fk_firearm_manufacturers_organizations_organization_id");
 
                     b.OwnsOne("ArmoryWiki.Domain.FuzzyDate", "From", b1 =>
                         {
@@ -1309,11 +1309,11 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
 
                             b1.HasKey("FirearmManufacturerId");
 
-                            b1.ToTable("firearm_manufacturer");
+                            b1.ToTable("firearm_manufacturers");
 
                             b1.WithOwner()
                                 .HasForeignKey("FirearmManufacturerId")
-                                .HasConstraintName("fk_firearm_manufacturer_firearm_manufacturer_id");
+                                .HasConstraintName("fk_firearm_manufacturers_firearm_manufacturers_id");
                         });
 
                     b.OwnsOne("ArmoryWiki.Domain.FuzzyDate", "To", b1 =>
@@ -1349,11 +1349,11 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
 
                             b1.HasKey("FirearmManufacturerId");
 
-                            b1.ToTable("firearm_manufacturer");
+                            b1.ToTable("firearm_manufacturers");
 
                             b1.WithOwner()
                                 .HasForeignKey("FirearmManufacturerId")
-                                .HasConstraintName("fk_firearm_manufacturer_firearm_manufacturer_id");
+                                .HasConstraintName("fk_firearm_manufacturers_firearm_manufacturers_id");
                         });
 
                     b.Navigation("Firearm");
@@ -1393,14 +1393,14 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasForeignKey("FirearmId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_firearm_tag_firearms_firearm_id");
+                        .HasConstraintName("fk_firearm_tags_firearms_firearm_id");
 
                     b.HasOne("ArmoryWiki.Domain.Tag", null)
                         .WithMany()
                         .HasForeignKey("TagId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_firearm_tag_tags_tag_id");
+                        .HasConstraintName("fk_firearm_tags_tags_tag_id");
                 });
 
             modelBuilder.Entity("ArmoryWiki.Domain.OperatingMechanism", b =>
@@ -1620,14 +1620,14 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CartridgeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_variant_cartridge_cartridges_cartridge_id");
+                        .HasConstraintName("fk_variant_cartridges_cartridges_cartridge_id");
 
                     b.HasOne("ArmoryWiki.Domain.Variant", "Variant")
                         .WithMany("Chamberings")
                         .HasForeignKey("VariantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_variant_cartridge_variants_variant_id");
+                        .HasConstraintName("fk_variant_cartridges_variants_variant_id");
 
                     b.Navigation("Cartridge");
 

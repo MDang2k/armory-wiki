@@ -14,7 +14,7 @@ public enum FeedSystem
     Cylinder,
     StripperClip,
     EnBlocClip,
-    Single,
+    SingleShot,
     Other,
 }
 
@@ -22,7 +22,7 @@ public enum FeedSystem
 public enum FiringModes
 {
     None = 0,
-    Single = 1,
+    SemiAutomatic = 1,
     Burst = 2,
     Automatic = 4,
 }
@@ -33,9 +33,9 @@ public enum OrganizationType { Company, DesignBureau, StateArsenal, Other }
 
 public enum CartridgeType { Pistol, Intermediate, FullPowerRifle, Magnum, Shotgun, Rimfire, Other }
 
-public enum DesignerRole { LeadDesigner, CoDesigner, Refinement }
+public enum DesignerRole { LeadDesigner, CoDesigner, Developer }
 
-public enum RelationType { DerivedFrom, InfluencedBy, CompetedAgainst, Replaced }
+public enum RelationType { DerivedFrom, CopyOf, InfluencedBy, CompetedAgainst, Replaced }
 
 /// <summary>Entity kinds that own a public slug (used by <see cref="SlugRedirect"/>).</summary>
 public enum SluggedEntity { Firearm, Variant, Person, Organization, Cartridge, Mechanism, Country, Tag }
