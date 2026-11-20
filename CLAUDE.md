@@ -1,5 +1,60 @@
 # ArmoryWiki
 
+Encyclopedic firearms database. Work follows `PLAN.md` phase by phase; big decisions live in `docs/adr/`.
+
+## Commands
+
+```bash
+cp .env.example .env                                    # once; set a real password
+docker compose up -d                                    # Postgres 17 on :5432
+cd backend && dotnet build                              # must stay at zero warnings (warnings are errors)
+cd backend && dotnet run --project src/ArmoryWiki.Api   # http://localhost:5080
+cd backend && dotnet test
+cd backend && dotnet ef migrations add <Name> -p src/ArmoryWiki.Infrastructure -s src/ArmoryWiki.Api
+cd frontend && npm run dev                              # http://localhost:3000
+cd frontend && npm run lint && npm run build
+```
+
+## Layout
+
+- `backend/src/ArmoryWiki.Domain`: entities, enums, value objects. No dependencies.
+- `backend/src/ArmoryWiki.Infrastructure`: DbContext, EF configurations, migrations, seeding, file store, importers.
+- `backend/src/ArmoryWiki.Api`: Minimal API endpoints, DTOs, validators, CLI subcommands.
+- `backend/tests/ArmoryWiki.Api.Tests`: integration tests (Testcontainers Postgres) and importer mapper tests.
+- `frontend/`: Next.js 16 App Router + TypeScript + Tailwind. Read `frontend/AGENTS.md` before writing frontend code.
+- Shared build settings (TFM, nullable, warnings-as-errors) live in `backend/Directory.Build.props`.
+
+Three backend projects only. No Application layer, MediatR or repository pattern: endpoints use the `DbContext` directly.
+
+## Conventions
+
+Data:
+- `int` identity keys plus a unique URL-safe `Slug` on every public entity (`Variant.Slug` is unique per firearm).
+- Measurements are **metric** in the DB and API (mm, g, m/s, m, rounds/min). Imperial conversion only in `frontend/src/lib/units.ts`.
+- Historical dates use the `FuzzyDate` owned type, never a bare `DateOnly`.
+- `CreatedAt`/`UpdatedAt` (UTC) are set in `SaveChangesAsync`.
+- Long-form text is Markdown in a `text` column.
+- Public endpoints return `Published` rows only; admin endpoints opt out explicitly.
+- Importers match on `WikidataId` only and never write a field listed in `LockedFields`.
+
+Backend:
+- File-scoped namespaces, `sealed` classes by default, records for DTOs.
+- `async` all the way with `CancellationToken` passed through; no `.Result`/`.Wait()`.
+- Never return EF entities from endpoints; project into DTOs.
+- Every migration gets a descriptive name. **Never edit a migration that has been applied.**
+- Every new endpoint gets at least one integration test. No live-network tests.
+
+Frontend:
+- Server Components by default; `"use client"` only where interactivity is needed.
+- No `any`. API types come only from the generated OpenAPI schema.
+- Never read cookies or headers in public pages (keeps them static).
+
+Content:
+- Never copy copyrighted text. Imported prose comes only from Wikipedia (CC BY-SA, attributed); other sources are cited, not copied.
+- No manufacturing, conversion or legal-circumvention content (PLAN.md §8).
+
+Git: commit after each completed checklist group with a conventional-commit message (`feat:`, `fix:`, `chore:`, `docs:`).
+
 ## Agent skills
 
 ### Issue tracker

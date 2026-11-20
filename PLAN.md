@@ -17,9 +17,9 @@
 | Validation | FluentValidation |
 | API docs | Built-in OpenAPI (`Microsoft.AspNetCore.OpenApi`) + Scalar UI in Development |
 | Tests (backend) | xUnit + Testcontainers (PostgreSQL) + `WebApplicationFactory` |
-| Frontend | **Next.js (App Router) + TypeScript**, server-rendered / ISR for SEO |
+| Frontend | **Next.js 16 (App Router, Cache Components) + TypeScript**, prerendered + cached for SEO |
 | Styling | Tailwind CSS |
-| Data fetching | Server Components fetch the API directly (tagged fetches, ISR); TanStack Query for client-side interactive parts (filters) |
+| Data fetching | Server Components fetch the API directly inside `"use cache"` functions (`cacheLife` + `cacheTag`); TanStack Query for client-side interactive parts (filters) |
 | API client types | Generated from the OpenAPI spec with `openapi-typescript` |
 | Search | Postgres full-text (weighted `tsvector`, `simple` config) + `pg_trgm` fuzzy name matching. **No Meilisearch** (ADR-0003) |
 | Images | ImageSharp thumbnails; files on a Docker volume served by Caddy. **No MinIO** |
@@ -220,7 +220,7 @@ Filter params accept comma-separated values: **OR within** a param, **AND across
 - `GET /api/timeline?from=1900&to=1960&country=&tag=`: minimal items (slug, name, designYear, yearTo, tags) for the timeline view
 
 ### Caching
-Server-side fetches from Next.js are cached by Next (ISR + tags, §5), so API responses consumed server-side send `Cache-Control: no-store` or a short private value. Only endpoints the browser calls directly (facets, list during client-side filtering) send `Cache-Control: public, max-age=60`.
+Server-side fetches from Next.js are cached by Next (`"use cache"` + tags, §5), so API responses consumed server-side send `Cache-Control: no-store` or a short private value. Only endpoints the browser calls directly (facets, list during client-side filtering) send `Cache-Control: public, max-age=60`.
 
 Write endpoints come in Phase 3 (admin).
 
@@ -242,7 +242,7 @@ Write endpoints come in Phase 3 (admin).
 | `/timeline` | Horizontal timeline with filters |
 | `/admin/...` | Phase 7 |
 
-- Detail pages: **ISR** (`revalidate` 1 hour) with tagged fetches (`firearm:<slug>`, `firearms:list`, `person:<slug>`, …) and `generateMetadata` for title/description/OpenGraph.
+- Detail pages: Next 16 **Cache Components** (`cacheComponents: true` in `next.config.ts`). Data loaders are `"use cache"` functions with `cacheLife('hours')` and `cacheTag(...)` (`firearm:<slug>`, `firearms:list`, `person:<slug>`, …), plus `generateMetadata` for title/description/OpenGraph. Route segment configs like `export const revalidate` are not allowed with Cache Components; read `node_modules/next/dist/docs/01-app/02-guides/migrating-to-cache-components.md` before Phase 5.
 - **On-demand revalidation:** a secret-protected route `POST /api/revalidate` (Next route handler; Caddy routes it to Next, not the API) takes a list of tags. The API calls it after every admin write and after each import batch.
 - **Units:** the server always renders **metric**. The Metric/Imperial toggle is a small client component that stores the choice in `localStorage` and swaps displayed values after hydration. Never read cookies in Server Components for this; it would make pages dynamic.
 - **Redirects:** when the API returns `redirectTo`, the page calls `permanentRedirect()` to the new slug.
@@ -337,7 +337,7 @@ Shared rules:
 - [ ] All routes from §5 except `/admin`, `/timeline` and `/firearms/[slug]/family-tree` (Phase 8)
 - [ ] `/firearms`: multi-select filter sidebar driven by `/facets`, URL-synced state, debounced text search, pagination
 - [ ] Firearm detail: variant switcher that updates the specs table; Markdown rendering via `react-markdown` (no raw HTML); image gallery with attribution and license under each image; approved videos as `youtube-nocookie.com` embeds; citations as footnotes; Wikipedia attribution
-- [ ] ISR + tagged fetches + `/api/revalidate` route handler (secret from env); wire the API's revalidate client to it
+- [ ] `"use cache"` data loaders with `cacheLife` + `cacheTag`, and a `/api/revalidate` route handler (secret from env) calling `revalidateTag`; wire the API's revalidate client to it
 - [ ] Slug redirects via `permanentRedirect()`
 - [ ] `src/lib/units.ts`: mm⇄in, g⇄lb/oz, m/s⇄ft/s, m⇄yd, with unit tests (Vitest)
 - [ ] `generateMetadata` on every detail page; `sitemap.ts` (Published only) and `robots.ts`
@@ -387,7 +387,7 @@ Shared rules:
 - Public endpoints return Published rows only; admin endpoints opt out explicitly.
 - Every migration gets a descriptive name; never edit a migration that has been applied.
 - Every new endpoint gets at least one integration test. Importers are tested through their mappers with fixtures; no live network in tests.
-- Frontend: Server Components by default; `"use client"` only where interactivity is needed. No `any`. API types come only from the generated schema. Never read cookies or headers in public pages (keeps them static/ISR).
+- Frontend: Server Components by default; `"use client"` only where interactivity is needed. No `any`. API types come only from the generated schema. Never read cookies or headers in public pages (keeps them prerendered/cached).
 - Measurements are metric in the DB and the API; conversion happens only in `units.ts`.
 - Never copy copyrighted text. Imported prose comes only from Wikipedia (CC BY-SA, attributed); other sources are cited, not copied.
 - Commit after each completed checklist group with a conventional-commit message (`feat:`, `fix:`, `chore:`).
