@@ -287,7 +287,7 @@ Write endpoints come in Phase 3 (admin).
 - [ ] Use projections (`Select` into DTOs). No returning entities, no lazy loading.
 - [ ] Filtering implemented as composable `IQueryable<Firearm>` extension methods (one per filter), each taking a list of values
 - [ ] Disjunctive facet counts (§4)
-- [ ] Full-text search via the `tsvector` column (`WebSearchToTsQuery` with `simple`, ranked by `ts_rank`), falling back to trigram similarity on name/aliases when FTS finds nothing
+- [ ] Full-text search via the `tsvector` column (`WebSearchToTsQuery` with `simple`, ranked by `ts_rank`), falling back to trigram **`word_similarity`** (`<%` operator, served by the `search_names` GIN index) on name/aliases when FTS finds nothing. Plain `similarity()` is too low on the concatenated column ("ak47" vs AK-47 scores 0.10; `word_similarity` scores 0.60). Credits whose Person/Organization is Draft come back with a null party under the filters, so skip them in projections
 - [ ] Family tree: load relations iteratively up to `depth` (max 5) with a visited set; return `{ nodes: [...], edges: [...] }`
 - [ ] Pagination + `pageSize` clamp; `SlugRedirect` lookup then 404 ProblemDetails for unknown slugs
 - [ ] OpenAPI document + Scalar UI in Development

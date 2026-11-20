@@ -6,11 +6,13 @@ Encyclopedic firearms database. Work follows `PLAN.md` phase by phase; big decis
 
 ```bash
 cp .env.example .env                                    # once; set a real password
+cd backend && dotnet tool restore                       # once; installs dotnet-ef 10
+cd backend && dotnet user-secrets set ConnectionStrings:ArmoryWiki "Host=localhost;Port=5432;Database=armorywiki;Username=armorywiki;Password=<from .env>" --project src/ArmoryWiki.Api   # once
 docker compose up -d                                    # Postgres 17 on :5432
 cd backend && dotnet build                              # must stay at zero warnings (warnings are errors)
-cd backend && dotnet run --project src/ArmoryWiki.Api   # http://localhost:5080
-cd backend && dotnet test
-cd backend && dotnet ef migrations add <Name> -p src/ArmoryWiki.Infrastructure -s src/ArmoryWiki.Api
+cd backend && dotnet run --project src/ArmoryWiki.Api   # http://localhost:5080; in Development it migrates + seeds on startup
+cd backend && dotnet test                               # needs Docker running (Testcontainers Postgres)
+cd backend && dotnet ef migrations add <Name> -p src/ArmoryWiki.Infrastructure -s src/ArmoryWiki.Api -o Persistence/Migrations
 cd frontend && npm run dev                              # http://localhost:3000
 cd frontend && npm run lint && npm run build
 ```

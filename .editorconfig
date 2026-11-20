@@ -13,5 +13,9 @@ indent_size = 4
 csharp_style_namespace_declarations = file_scoped:warning
 dotnet_sort_system_directives_first = true
 
+# EF Core migrations are tool-generated; don't apply style rules to them.
+[**/Migrations/*.cs]
+generated_code = true
+
 [*.md]
 trim_trailing_whitespace = false
