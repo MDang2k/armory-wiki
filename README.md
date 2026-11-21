@@ -13,8 +13,8 @@ Early development, built phase by phase from [PLAN.md](PLAN.md).
 | 0 | Repository and infrastructure | Done |
 | 1 | Domain model, database, development seed | Done |
 | 2 | Read API | Done |
-| 3 | Admin API, sources and media | Next |
-| 4 | Importers (Wikidata, Commons, Wikipedia, Forgotten Weapons videos) | |
+| 3 | Admin API, sources and media | Done |
+| 4 | Importers (Wikidata, Commons, Wikipedia, Forgotten Weapons videos) | Next |
 | 5 | Frontend, read-only | |
 | 6 | Deploy | |
 | 7 | Admin UI | |
@@ -113,6 +113,7 @@ The major design choices are recorded in [docs/adr/](docs/adr/):
 3. [Postgres search instead of Meilisearch](docs/adr/0003-postgres-search-no-meilisearch.md)
 4. [Wikidata is the main content source](docs/adr/0004-wikidata-main-source-qid-identity.md)
 5. [Controlled tags instead of a single category](docs/adr/0005-tags-instead-of-category.md)
+6. [SkiaSharp for image processing](docs/adr/0006-skiasharp-for-images.md)
 
 ## License
 

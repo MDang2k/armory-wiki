@@ -24,7 +24,8 @@ public sealed record CartridgeDetailDto(
     SlugName? Parent,
     IReadOnlyList<SlugName> Children,
     IReadOnlyList<FirearmRefDto> Firearms,
-    IReadOnlyList<CitationDto> Citations);
+    IReadOnlyList<CitationDto> Citations,
+    IReadOnlyList<ImageDto> Images);
 
 public static class CartridgeEndpoints
 {
@@ -68,7 +69,8 @@ public static class CartridgeEndpoints
                 c.ParentCartridge == null ? null : new SlugName(c.ParentCartridge.Slug, c.ParentCartridge.Name),
                 Array.Empty<SlugName>(),
                 Array.Empty<FirearmRefDto>(),
-                Array.Empty<CitationDto>()),
+                Array.Empty<CitationDto>(),
+                c.Images.OrderBy(i => i.SortOrder).ThenBy(i => i.Id).Select(i => ImageDto.From(i)).ToList()),
         }).FirstOrDefaultAsync(ct);
 
         if (cartridge is null)

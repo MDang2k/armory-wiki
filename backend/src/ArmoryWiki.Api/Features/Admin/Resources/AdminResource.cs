@@ -1,4 +1,7 @@
+using System.Linq.Expressions;
 using ArmoryWiki.Api.Common;
+using ArmoryWiki.Api.Features.Admin.Media;
+using ArmoryWiki.Infrastructure.Media;
 using ArmoryWiki.Domain;
 using ArmoryWiki.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -65,6 +68,8 @@ internal sealed class ResourceSpec<TEntity, TInput, TRefs>
     public required Func<ArmoryWikiDbContext, int, CancellationToken, Task<List<string>>> ReferencedByAsync { get; init; }
     /// <summary>Publish requirements (GLOSSARY.md). Only for entities with a lifecycle.</summary>
     public Func<TEntity, List<string>> MissingForPublish { get; init; } = _ => [];
+    /// <summary>The entity's images, for entities that can have them; their files are removed with the entity.</summary>
+    public Func<int, Expression<Func<Image, bool>>>? ImagesOf { get; init; }
 }
 
 internal static class AdminResource
@@ -84,8 +89,8 @@ internal static class AdminResource
             .Validate<TInput>().ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status409Conflict);
         group.MapPut("/{id:int}", (int id, uint version, TInput input, ArmoryWikiDbContext db, CancellationToken ct) =>
             UpdateAsync(spec, id, version, input, db, ct)).Validate<TInput>().ProducesWriteProblems();
-        group.MapDelete("/{id:int}", (int id, uint version, ArmoryWikiDbContext db, CancellationToken ct) =>
-            DeleteAsync(spec, id, version, db, ct)).ProducesWriteProblems();
+        group.MapDelete("/{id:int}", (int id, uint version, ArmoryWikiDbContext db, FileStore store, CancellationToken ct) =>
+            DeleteAsync(spec, id, version, db, store, ct)).ProducesWriteProblems();
 
         if (publishable)
         {
@@ -285,7 +290,7 @@ internal static class AdminResource
 
     /// <summary>Refused while anything still points at the entity. Its slug redirects go with it.</summary>
     private static async Task<Results<NoContent, ProblemHttpResult>> DeleteAsync<TEntity, TInput, TRefs>(
-        ResourceSpec<TEntity, TInput, TRefs> spec, int id, uint version, ArmoryWikiDbContext db, CancellationToken ct)
+        ResourceSpec<TEntity, TInput, TRefs> spec, int id, uint version, ArmoryWikiDbContext db, FileStore store, CancellationToken ct)
         where TEntity : Entity, ISlugged where TInput : class
     {
         var (entity, problem) = await LoadForWriteAsync(db, spec, id, version, ct);
@@ -299,9 +304,16 @@ internal static class AdminResource
             return AdminProblems.Conflict($"{spec.Title} is in use", $"Still referenced by: {string.Join(", ", references)}.");
         }
 
+        var imageHashes = spec.ImagesOf is null ? [] : await db.Images.Where(spec.ImagesOf(id)).Select(i => i.ContentHash).ToListAsync(ct);
         await db.RemoveRedirectsAsync(spec.SlugType, id, ct);
-        db.Remove(entity);
-        return await db.TrySaveAsync<TEntity>(id, ct) is { } conflict ? conflict : TypedResults.NoContent();
+        db.Remove(entity); // citations and images cascade
+        if (await db.TrySaveAsync<TEntity>(id, ct) is { } conflict)
+        {
+            return conflict;
+        }
+
+        await db.DeleteUnusedImageFilesAsync(store, imageHashes, ct);
+        return TypedResults.NoContent();
     }
 
     private static async Task<Results<Ok<AdminEntityDto<TInput>>, ProblemHttpResult>> UnlockAsync<TEntity, TInput, TRefs>(

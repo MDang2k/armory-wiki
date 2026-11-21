@@ -36,6 +36,8 @@ public sealed class Firearm : Entity, ISlugged, IPublishable
     public List<FirearmRelation> RelationsFrom { get; set; } = [];
     public List<FirearmRelation> RelationsTo { get; set; } = [];
     public List<Adoption> Adoptions { get; set; } = [];
+    public List<Image> Images { get; set; } = [];
+    public List<Video> Videos { get; set; } = [];
 }
 
 /// <summary>A concrete version of a firearm; holds the specifications. Exactly one per firearm is the base variant.</summary>

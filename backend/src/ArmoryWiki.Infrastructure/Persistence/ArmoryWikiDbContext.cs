@@ -34,6 +34,8 @@ public sealed class ArmoryWikiDbContext(DbContextOptions<ArmoryWikiDbContext> op
     public DbSet<SlugRedirect> SlugRedirects => Set<SlugRedirect>();
     public DbSet<Source> Sources => Set<Source>();
     public DbSet<Citation> Citations => Set<Citation>();
+    public DbSet<Image> Images => Set<Image>();
+    public DbSet<Video> Videos => Set<Video>();
     public DbSet<ReferenceSeedLogEntry> ReferenceSeedLog => Set<ReferenceSeedLogEntry>();
 
     public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
@@ -53,6 +55,7 @@ public sealed class ArmoryWikiDbContext(DbContextOptions<ArmoryWikiDbContext> op
         configurationBuilder.Properties<RelationType>().HaveConversion<string>();
         configurationBuilder.Properties<SluggedEntity>().HaveConversion<string>();
         configurationBuilder.Properties<SourceType>().HaveConversion<string>();
+        configurationBuilder.Properties<VideoStatus>().HaveConversion<string>();
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

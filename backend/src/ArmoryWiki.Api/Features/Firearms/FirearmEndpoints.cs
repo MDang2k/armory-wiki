@@ -35,7 +35,7 @@ public static class FirearmEndpoints
         f.OperatingMechanism == null ? null : new SlugName(f.OperatingMechanism.Slug, f.OperatingMechanism.Name),
         f.Variants.Where(v => v.IsBaseVariant).SelectMany(v => v.Chamberings).Where(c => c.IsPrimary)
             .Select(c => new SlugName(c.Cartridge.Slug, c.Cartridge.Name)).FirstOrDefault(),
-        null);
+        f.Images.OrderBy(i => i.SortOrder).ThenBy(i => i.Id).Select(i => ImageUrls.Prefix + i.ContentHash + ImageUrls.ThumbFile).FirstOrDefault());
 
     private static async Task<Results<Ok<PagedResult<FirearmListItemDto>>, ProblemHttpResult>> List(
         [AsParameters] FirearmQuery query, string? sort, int? page, int? pageSize, ArmoryWikiDbContext db, CancellationToken ct)
@@ -177,7 +177,12 @@ public static class FirearmEndpoints
                     .OrderBy(r => r.Type).ThenBy(r => r.FromFirearm.Name)
                     .Select(r => new RelationDto(r.Type, new SlugName(r.FromFirearm.Slug, r.FromFirearm.Name), r.Note))
                     .ToList(),
-                Array.Empty<CitationDto>()))
+                Array.Empty<CitationDto>(),
+                f.Images.OrderBy(i => i.SortOrder).ThenBy(i => i.Id).Select(i => ImageDto.From(i)).ToList(),
+                f.Videos.Where(v => v.Status == VideoStatus.Approved)
+                    .OrderByDescending(v => v.PublishedAt).ThenBy(v => v.Id)
+                    .Select(v => new VideoDto(v.YouTubeVideoId, v.Title, v.Channel, v.PublishedAt))
+                    .ToList()))
             .FirstOrDefaultAsync(ct);
 
         if (dto is not null)

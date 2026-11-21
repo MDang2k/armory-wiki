@@ -46,7 +46,8 @@ Backend:
 - `async` all the way with `CancellationToken` passed through; no `.Result`/`.Wait()`.
 - Never return EF entities from endpoints; project into DTOs.
 - The API's DbContext is **no-tracking by default** (reads dominate; projecting owned `FuzzyDate`s requires it). Write paths call `AsTracking()`; seeders switch tracking on themselves.
-- Admin endpoints live under `/api/admin` (group requires the `Admin` policy and the `X-XSRF-TOKEN` antiforgery header on writes). Writes take `?version=` (the firearm's xmin) and answer 409 when stale; use the `FirearmEditing` helpers (`LoadForWriteAsync`, `SaveFirearmAsync`, `Lock`, slug claiming) rather than re-implementing them.
+- Admin endpoints live under `/api/admin` (group requires the `Admin` policy and the `X-XSRF-TOKEN` antiforgery header on writes). Writes to editable entities take `?version=` (the row's xmin) and answer 409 when stale; citations, images and videos are add/remove entries without versions. Reuse the shared helpers (`AdminEditing`, `FirearmEditing`, the generic `AdminResource` engine) rather than re-implementing them.
+- Image files: `FileStore` + `ImageProcessor` (SkiaSharp, ADR-0006); anything touching one content hash's files takes the hash advisory lock (see `AdminMediaEndpoints`).
 - Never run `dotnet ef migrations remove --no-build`: with a stale build it removes the previous (committed) migration instead.
 - Endpoints live in `Api/Features/<Resource>/` with their DTOs, return `TypedResults`, and declare non-200 answers (`ProducesProblem`, `ProducesSlugMisses`) so the OpenAPI document stays complete for the frontend.
 - Every migration gets a descriptive name. **Never edit a migration that has been applied.**

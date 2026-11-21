@@ -21,7 +21,8 @@ public sealed record OrganizationDetailDto(
     string? WikidataId,
     IReadOnlyList<DesignedFirearmDto> Designed,
     IReadOnlyList<ManufacturedFirearmDto> Manufactured,
-    IReadOnlyList<CitationDto> Citations);
+    IReadOnlyList<CitationDto> Citations,
+    IReadOnlyList<ImageDto> Images);
 
 public static class OrganizationEndpoints
 {
@@ -60,7 +61,8 @@ public static class OrganizationEndpoints
                 o.WikidataId,
                 Array.Empty<DesignedFirearmDto>(),
                 Array.Empty<ManufacturedFirearmDto>(),
-                Array.Empty<CitationDto>()),
+                Array.Empty<CitationDto>(),
+                o.Images.OrderBy(i => i.SortOrder).ThenBy(i => i.Id).Select(i => ImageDto.From(i)).ToList()),
         }).FirstOrDefaultAsync(ct);
 
         if (org is null)

@@ -593,6 +593,114 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                     b.ToTable("firearm_tags", (string)null);
                 });
 
+            modelBuilder.Entity("ArmoryWiki.Domain.Image", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("author");
+
+                    b.Property<string>("Caption")
+                        .HasColumnType("text")
+                        .HasColumnName("caption");
+
+                    b.Property<int?>("CartridgeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("cartridge_id");
+
+                    b.Property<string>("CommonsFileName")
+                        .HasColumnType("text")
+                        .HasColumnName("commons_file_name");
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("content_hash");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int?>("FirearmId")
+                        .HasColumnType("integer")
+                        .HasColumnName("firearm_id");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("integer")
+                        .HasColumnName("height");
+
+                    b.Property<string>("License")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("license");
+
+                    b.Property<int?>("OrganizationId")
+                        .HasColumnType("integer")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("OriginalExtension")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)")
+                        .HasColumnName("original_extension");
+
+                    b.Property<int?>("PersonId")
+                        .HasColumnType("integer")
+                        .HasColumnName("person_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("SourceUrl")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source_url");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("integer")
+                        .HasColumnName("width");
+
+                    b.HasKey("Id")
+                        .HasName("pk_images");
+
+                    b.HasIndex("CartridgeId")
+                        .HasDatabaseName("ix_images_cartridge_id");
+
+                    b.HasIndex("CommonsFileName")
+                        .IsUnique()
+                        .HasDatabaseName("ix_images_commons_file_name");
+
+                    b.HasIndex("ContentHash")
+                        .HasDatabaseName("ix_images_content_hash");
+
+                    b.HasIndex("FirearmId")
+                        .HasDatabaseName("ix_images_firearm_id");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_images_organization_id");
+
+                    b.HasIndex("PersonId")
+                        .HasDatabaseName("ix_images_person_id");
+
+                    b.ToTable("images", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_images_exactly_one_subject", "num_nonnulls(firearm_id, person_id, organization_id, cartridge_id) = 1");
+                        });
+                });
+
             modelBuilder.Entity("ArmoryWiki.Domain.OperatingMechanism", b =>
                 {
                     b.Property<int>("Id")
@@ -1070,6 +1178,61 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasFilter("is_primary");
 
                     b.ToTable("variant_cartridges", (string)null);
+                });
+
+            modelBuilder.Entity("ArmoryWiki.Domain.Video", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Channel")
+                        .HasColumnType("text")
+                        .HasColumnName("channel");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("FirearmId")
+                        .HasColumnType("integer")
+                        .HasColumnName("firearm_id");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("YouTubeVideoId")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("you_tube_video_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_videos");
+
+                    b.HasIndex("FirearmId", "YouTubeVideoId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_videos_firearm_id_you_tube_video_id");
+
+                    b.ToTable("videos", (string)null);
                 });
 
             modelBuilder.Entity("ArmoryWiki.Domain.WikidataClassTagMap", b =>
@@ -1890,6 +2053,41 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_firearm_tags_tags_tag_id");
                 });
 
+            modelBuilder.Entity("ArmoryWiki.Domain.Image", b =>
+                {
+                    b.HasOne("ArmoryWiki.Domain.Cartridge", "Cartridge")
+                        .WithMany("Images")
+                        .HasForeignKey("CartridgeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_images_cartridges_cartridge_id");
+
+                    b.HasOne("ArmoryWiki.Domain.Firearm", "Firearm")
+                        .WithMany("Images")
+                        .HasForeignKey("FirearmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_images_firearms_firearm_id");
+
+                    b.HasOne("ArmoryWiki.Domain.Organization", "Organization")
+                        .WithMany("Images")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_images_organizations_organization_id");
+
+                    b.HasOne("ArmoryWiki.Domain.Person", "Person")
+                        .WithMany("Images")
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_images_people_person_id");
+
+                    b.Navigation("Cartridge");
+
+                    b.Navigation("Firearm");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Person");
+                });
+
             modelBuilder.Entity("ArmoryWiki.Domain.OperatingMechanism", b =>
                 {
                     b.HasOne("ArmoryWiki.Domain.OperatingMechanism", "Parent")
@@ -2121,6 +2319,18 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                     b.Navigation("Variant");
                 });
 
+            modelBuilder.Entity("ArmoryWiki.Domain.Video", b =>
+                {
+                    b.HasOne("ArmoryWiki.Domain.Firearm", "Firearm")
+                        .WithMany("Videos")
+                        .HasForeignKey("FirearmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_videos_firearms_firearm_id");
+
+                    b.Navigation("Firearm");
+                });
+
             modelBuilder.Entity("ArmoryWiki.Domain.WikidataClassTagMap", b =>
                 {
                     b.HasOne("ArmoryWiki.Domain.Tag", "Tag")
@@ -2190,11 +2400,18 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_identity_user_tokens_identity_users_user_id");
                 });
 
+            modelBuilder.Entity("ArmoryWiki.Domain.Cartridge", b =>
+                {
+                    b.Navigation("Images");
+                });
+
             modelBuilder.Entity("ArmoryWiki.Domain.Firearm", b =>
                 {
                     b.Navigation("Adoptions");
 
                     b.Navigation("Designers");
+
+                    b.Navigation("Images");
 
                     b.Navigation("Manufacturers");
 
@@ -2203,11 +2420,23 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                     b.Navigation("RelationsTo");
 
                     b.Navigation("Variants");
+
+                    b.Navigation("Videos");
                 });
 
             modelBuilder.Entity("ArmoryWiki.Domain.OperatingMechanism", b =>
                 {
                     b.Navigation("Children");
+                });
+
+            modelBuilder.Entity("ArmoryWiki.Domain.Organization", b =>
+                {
+                    b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("ArmoryWiki.Domain.Person", b =>
+                {
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("ArmoryWiki.Domain.Variant", b =>

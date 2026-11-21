@@ -29,6 +29,9 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public WebApplicationFactory<Program> Factory { get; private set; } = null!;
 
+    /// <summary>A throwaway folder for uploaded image files, removed after the run.</summary>
+    public string MediaRoot { get; } = Path.Combine(Path.GetTempPath(), "armorywiki-tests-" + Guid.NewGuid().ToString("N"));
+
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
@@ -45,6 +48,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
             b.UseSetting("Admin:Email", AdminEmail);
             b.UseSetting("Admin:Password", AdminPassword);
             b.UseSetting("RateLimits:LoginPerMinute", "1000"); // every test logs in from the same address
+            b.UseSetting("Media:Root", MediaRoot);
         });
         _ = Factory.Server; // boots the app: migrate + seed
 
@@ -126,6 +130,10 @@ public sealed class DatabaseFixture : IAsyncLifetime
     {
         await Factory.DisposeAsync();
         await _postgres.DisposeAsync();
+        if (Directory.Exists(MediaRoot))
+        {
+            Directory.Delete(MediaRoot, recursive: true);
+        }
     }
 }
 

@@ -83,7 +83,11 @@ public sealed record FirearmDetailDto(
     /// <summary>Relations pointing at this firearm, e.g. the same relation on the AK-47 page.</summary>
     IReadOnlyList<RelationDto> RelationsTo,
     /// <summary>Footnotes: citations of the firearm and of its variants, in the order added.</summary>
-    IReadOnlyList<CitationDto> Citations);
+    IReadOnlyList<CitationDto> Citations,
+    /// <summary>In display order; the first is the thumbnail.</summary>
+    IReadOnlyList<ImageDto> Images,
+    /// <summary>Approved videos only, newest first.</summary>
+    IReadOnlyList<VideoDto> Videos);
 
 public sealed record TagFacetDto(string Slug, string Name, TagGroup Group, int Count);
 

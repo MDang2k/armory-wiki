@@ -1,6 +1,8 @@
 using ArmoryWiki.Api.Common;
 using ArmoryWiki.Api.Features.Firearms;
+using ArmoryWiki.Api.Features.Admin.Media;
 using ArmoryWiki.Domain;
+using ArmoryWiki.Infrastructure.Media;
 using ArmoryWiki.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -193,7 +195,7 @@ public static class AdminFirearmEndpoints
     }
 
     /// <summary>Drafts only: published firearms must be unpublished first. Its slug redirects go with it.</summary>
-    private static async Task<Results<NoContent, ProblemHttpResult>> Delete(int id, uint version, ArmoryWikiDbContext db, CancellationToken ct)
+    private static async Task<Results<NoContent, ProblemHttpResult>> Delete(int id, uint version, ArmoryWikiDbContext db, FileStore store, CancellationToken ct)
     {
         var (firearm, problem) = await db.LoadForWriteAsync(id, version, ct);
         if (problem is not null)
@@ -208,8 +210,15 @@ public static class AdminFirearmEndpoints
 
         db.SlugRedirects.RemoveRange(await db.SlugRedirects.AsTracking()
             .Where(r => r.EntityType == SluggedEntity.Firearm && r.EntityId == id).ToListAsync(ct));
-        db.Firearms.Remove(firearm); // variants, credits, relations and adoptions cascade
-        return await db.TrySaveAsync<Firearm>(id, ct) is { } conflict ? conflict : TypedResults.NoContent();
+        var imageHashes = await db.Images.Where(i => i.FirearmId == id).Select(i => i.ContentHash).ToListAsync(ct);
+        db.Firearms.Remove(firearm); // variants, credits, relations, adoptions, citations, images and videos cascade
+        if (await db.TrySaveAsync<Firearm>(id, ct) is { } conflict)
+        {
+            return conflict;
+        }
+
+        await db.DeleteUnusedImageFilesAsync(store, imageHashes, ct);
+        return TypedResults.NoContent();
     }
 
     /// <summary>Removes a lock without changing the value; the next import may overwrite the field again.</summary>

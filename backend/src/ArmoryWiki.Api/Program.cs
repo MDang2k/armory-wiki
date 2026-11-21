@@ -4,6 +4,7 @@ using ArmoryWiki.Api.Common;
 using ArmoryWiki.Domain;
 using ArmoryWiki.Api.Features.Admin;
 using ArmoryWiki.Api.Features.Admin.Firearms;
+using ArmoryWiki.Api.Features.Admin.Media;
 using ArmoryWiki.Api.Features.Admin.Resources;
 using ArmoryWiki.Api.Features.Admin.Sources;
 using ArmoryWiki.Api.Features.Cartridges;
@@ -12,10 +13,12 @@ using ArmoryWiki.Api.Features.Mechanisms;
 using ArmoryWiki.Api.Features.Organizations;
 using ArmoryWiki.Api.Features.People;
 using ArmoryWiki.Api.Features.Reference;
+using ArmoryWiki.Infrastructure.Media;
 using ArmoryWiki.Infrastructure.Persistence;
 using ArmoryWiki.Infrastructure.Seed;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,6 +31,12 @@ builder.Services.AddDbContext<ArmoryWikiDbContext>(o =>
     ArmoryWikiDbContext.Configure(o, connectionString);
     o.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 });
+// Image files: a Docker volume in production (Media:Root), relative paths resolved against the API project.
+var mediaRoot = Path.GetFullPath(
+    builder.Configuration["Media:Root"] ?? throw new InvalidOperationException("Media:Root is not configured."),
+    builder.Environment.ContentRootPath);
+Directory.CreateDirectory(mediaRoot);
+builder.Services.AddSingleton(new FileStore(mediaRoot));
 builder.Services.AddProblemDetails();
 builder.AddAdminAuth();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -48,6 +57,12 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+if (app.Environment.IsDevelopment())
+{
+    // Production serves /media from the same volume through Caddy (PLAN.md Phase 6).
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(mediaRoot), RequestPath = "/media" });
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
@@ -81,5 +96,6 @@ var admin = api.MapGroup("/admin").RequireAuthorization(AdminAuth.Policy).Requir
 admin.MapAdminFirearms().MapAdminFirearmParts();
 admin.MapAdminResources();
 admin.MapAdminSources();
+admin.MapAdminMedia();
 
 app.Run();

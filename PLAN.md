@@ -24,7 +24,7 @@
 | Data fetching | Server Components fetch the API directly inside `"use cache"` functions (`cacheLife` + `cacheTag`); TanStack Query for client-side interactive parts (filters) |
 | API client types | Generated from the OpenAPI spec with `openapi-typescript` |
 | Search | Postgres full-text (weighted `tsvector`, `simple` config) + `pg_trgm` fuzzy name matching. **No Meilisearch** (ADR-0003) |
-| Images | ImageSharp thumbnails; files on a Docker volume served by Caddy. **No MinIO** |
+| Images | SkiaSharp (decode, orient, re-encode, WebP sizes; ADR-0006); files on a Docker volume served by Caddy. **No MinIO** |
 | Hosting | One VPS, Docker Compose, Caddy reverse proxy with automatic TLS, `/api` on the same origin as the site (ADR-0002) |
 | CI/CD | GitHub Actions → images on GHCR → SSH deploy |
 
@@ -176,9 +176,9 @@ Designers can be people or organizations (Wikidata's "designed by" often points 
 
 **Citation**: `Id`, `SourceId`, exactly one of `FirearmId?` / `VariantId?` / `PersonId?` / `OrganizationId?` / `CartridgeId?` (check constraint, cascading deletes), `FieldName?` (an API field name), `Locator?` (free text: "p. 112", "claim 3", "12:40", a deep URL). Every imported entity gets one citation to the Wikidata source (Phase 4).
 
-**Media** (GLOSSARY.md: *image*): `Id`, exactly one of `FirearmId?` / `PersonId?` / `OrganizationId?` / `CartridgeId?` (check constraint), `SortOrder` (the first image is the thumbnail), `ContentHash` (storage key), `Caption?`, `Author` (required), `License` (required, fixed list: `CC0-1.0`, `PD`, `CC-BY-2.0|2.5|3.0|4.0`, `CC-BY-SA-2.0|2.5|3.0|4.0`), `SourceUrl` (required), `Width`, `Height`, `CommonsFileName?` (unique when set). Files: the original plus WebP `thumb` (320 px) and `medium` (1280 px), named by content hash, EXIF stripped after applying orientation.
+**Image** (GLOSSARY.md: *image*): `Id`, exactly one of `FirearmId?` / `PersonId?` / `OrganizationId?` / `CartridgeId?` (check constraint), `SortOrder` (the first image is the thumbnail), `ContentHash` (SHA-256 of the upload; storage key), `OriginalExtension`, `Caption?`, `Author` (required), `License` (required, fixed list: `CC0-1.0`, `PD`, `CC-BY-2.0|2.5|3.0|4.0`, `CC-BY-SA-2.0|2.5|3.0|4.0`), `SourceUrl` (required), `Width`, `Height`, `CommonsFileName?` (unique when set). Files: a cleaned "original" (orientation applied, then re-encoded in its own format, so no EXIF/GPS ever reaches disk; PNG stays lossless) plus WebP `thumb` (320 px) and `medium` (1280 px), one folder per content hash, shared by images with identical uploads.
 
-**VideoReference** (GLOSSARY.md: *video*): `Id`, `FirearmId`, `YouTubeVideoId` (unique per firearm), `Title`, `Channel`, `PublishedAt`, `Status` (Suggested, Approved, Rejected). Only Approved videos are public. Videos an admin adds by hand start Approved. Embedded, never re-hosted.
+**Video** (GLOSSARY.md: *video*): `Id`, `FirearmId`, `YouTubeVideoId` (unique per firearm), `Title`, `Channel?`, `PublishedAt?`, `Status` (Suggested, Approved, Rejected). Only Approved videos are public. Videos an admin adds by hand start Approved (title typed in; no live YouTube lookup). Embedded, never re-hosted.
 
 ### 3.6 Later (not scheduled; do **not** create)
 `User` (public registration), `Revision`, `Conflict`, and the public wiki-editing flow. Revisit when there is real outside interest in contributing.
@@ -307,7 +307,7 @@ Rules shared by every slice:
 - Admin endpoints live under `/api/admin`, behind one `Admin` policy on the group. Admin DTOs carry `status`, `lockedFields`, `version` and `missingForPublish`, and admin reads bypass the Published filter. Public routes never change behaviour based on who is asking.
 - Writes are `PUT` with the full representation; there is no `PATCH`. The server diffs old and new state, and every changed field is added to `LockedFields`.
 - Lock keys mirror API field names: core fields as `designDate`, variant fields as `variants/{variantId}/weightEmptyG` (id, not slug), whole lists as `tags`, `designers`, `manufacturers`, `relations`, `adoptions`, `chamberings/{variantId}`, plus `baseVariant`. `DELETE /api/admin/{entity}/{id}/locks/{key}` unlocks without changing the value.
-- Optimistic concurrency on Postgres `xmin`: every admin DTO has `version`, every `PUT` sends it, and a mismatch answers 409 ProblemDetails carrying the current version.
+- Optimistic concurrency on Postgres `xmin`: every admin DTO of an editable entity has `version`, every `PUT` sends it, and a mismatch answers 409 ProblemDetails carrying the current version. Citations, images and videos are add/remove entries attached to a subject: they take no version and don't bump the subject's.
 - Write handlers load with `AsTracking()` (the API context is no-tracking by default).
 - FluentValidation on every write DTO: slug format `^[a-z0-9]+(-[a-z0-9]+)*$`; firearm slugs `facets` and `compare` are reserved because they are API routes; positive measurements; `FuzzyDate` consistency (Month 1–12, Day valid for the month, `YearTo >= Year`, a Decade starts at a year ending in 0).
 - Slugs are generated from the name when not supplied: lowercase, `×` → `x`, accents removed, Cyrillic transliterated, every other run of non-alphanumerics → `-`, trimmed; collisions get `-2`, `-3`, … A slug change writes a `SlugRedirect` for entities with a public page (firearms, people, organizations, cartridges, mechanisms); variants, countries and tags have none, so their renames write none. A live slug always beats a redirect: taking a slug deletes any redirect with that old slug, including renaming back to it.
@@ -336,13 +336,13 @@ Rules shared by every slice:
 - [x] Tests.
 
 **3d: images and videos**
-- [ ] Media and VideoReference entities and migration.
-- [ ] A single `FileStore` class writing to a configured directory (Docker volume). Upload: `POST /api/admin/{firearms|people|organizations|cartridges}/{id}/images` as multipart (file plus caption, author, license, sourceUrl). JPEG, PNG or WebP up to 20 MB, verified by decoding; EXIF stripped after applying orientation; original plus WebP thumb (320 px) and medium (1280 px), named by content hash.
-- [ ] `PUT .../images/{imageId}` edits details, `PUT .../images/order` reorders (the first is the thumbnail), `DELETE .../images/{imageId}` removes the files unless another image shares the content hash.
-- [ ] The API serves `/media/...` in Development only; Caddy serves it in production.
-- [ ] Public detail DTOs include images (with author, license and source) and approved videos; the list's `thumbnailUrl` is the first image's thumb.
-- [ ] Videos: an admin adds one by YouTube URL (Approved); approve and reject endpoints for suggested ones.
-- [ ] Tests.
+- [x] Image and Video entities and migration (named after the glossary terms).
+- [x] A single `FileStore` class writing to a configured directory (Docker volume). Upload: `POST /api/admin/{firearms|people|organizations|cartridges}/{id}/images` as multipart (file plus caption, author, license, sourceUrl). JPEG, PNG or WebP up to 20 MB and 40 MP, verified by decoding; EXIF orientation applied, metadata dropped by re-encoding; original plus WebP thumb (320 px) and medium (1280 px), named by content hash. Upload, delete and cleanup of one hash are serialized with an advisory lock.
+- [x] `GET`/`PUT .../{owner}/{id}/images/order` per owner; `PUT /api/admin/images/{imageId}` edits details and `DELETE /api/admin/images/{imageId}` removes the files unless another image shares the content hash (flat routes, like citations). Deleting an owner removes its image files too.
+- [x] The API serves `/media/...` in Development only; Caddy serves it in production.
+- [x] Public detail DTOs include images (with author, license and source) and approved videos; the list's `thumbnailUrl` is the first image's thumb.
+- [x] Videos: an admin adds one by YouTube link (Approved); approve, reject and delete endpoints; per-firearm list.
+- [x] Tests, including an acceptance test that walks the Phase 3 "Done when" through HTTP.
 
 **Done when:** an admin can, through the API, create a firearm with variants, designers, chamberings, relations, an uploaded image and a citation, publish it, and see it on the public API; all tests are green.
 

@@ -13,6 +13,7 @@ public sealed class Person : Entity, ISlugged, IPublishable
     public string? WikidataId { get; set; }
     public PublishStatus Status { get; set; }
     public List<string> LockedFields { get; set; } = [];
+    public List<Image> Images { get; set; } = [];
 }
 
 /// <summary>Manufacturers, design bureaus, state arsenals.</summary>
@@ -29,6 +30,7 @@ public sealed class Organization : Entity, ISlugged, IPublishable
     public string? WikidataId { get; set; }
     public PublishStatus Status { get; set; }
     public List<string> LockedFields { get; set; } = [];
+    public List<Image> Images { get; set; } = [];
 }
 
 public sealed class Country : Entity, ISlugged
@@ -62,6 +64,7 @@ public sealed class Cartridge : Entity, ISlugged, IPublishable
     public int? CountryOfOriginId { get; set; }
     public Country? CountryOfOrigin { get; set; }
     public string? Description { get; set; }
+    public List<Image> Images { get; set; } = [];
 }
 
 /// <summary>Tree node, e.g. Gas-operated → Short-stroke piston. <see cref="Path"/> is "/gas-operated/short-stroke-piston/".</summary>

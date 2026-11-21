@@ -94,6 +94,7 @@ internal static class AdminResourceSpecs
             c.Set("biography", b.Biography, i.Biography, () => p.Biography = i.Biography);
             c.Set("wikidataId", b.WikidataId, i.WikidataId, () => p.WikidataId = i.WikidataId);
         },
+        ImagesOf = id => i => i.PersonId == id,
         ReferencedByAsync = (db, id, ct) => db.FirearmDesigners.IgnoreQueryFilters()
             .Where(d => d.PersonId == id).Select(d => "firearm " + d.Firearm.Slug).Distinct().ToListAsync(ct),
     };
@@ -106,6 +107,7 @@ internal static class AdminResourceSpecs
         SlugType = SluggedEntity.Organization,
         HasPublicPage = true,
         Set = db => db.Organizations,
+        ImagesOf = id => i => i.OrganizationId == id,
         Include = q => q.Include(o => o.Country),
         NameOf = o => o.Name,
         ToInput = o => new(o.Slug, o.Name, o.Type, o.Country?.Slug, FuzzyDateDto.From(o.Founded), o.Description, o.WikidataId),
@@ -145,6 +147,7 @@ internal static class AdminResourceSpecs
         SlugType = SluggedEntity.Cartridge,
         HasPublicPage = true,
         Set = db => db.Cartridges,
+        ImagesOf = id => i => i.CartridgeId == id,
         Include = q => q.Include(k => k.ParentCartridge).Include(k => k.CountryOfOrigin),
         NameOf = k => k.Name,
         ToInput = k => new(k.Slug, k.Name, k.AlternativeNames, k.WikidataId, k.Type, k.BulletDiameterMm, k.CaseLengthMm,

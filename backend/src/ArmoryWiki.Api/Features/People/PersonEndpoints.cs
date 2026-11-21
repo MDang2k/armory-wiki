@@ -19,7 +19,8 @@ public sealed record PersonDetailDto(
     string? Biography,
     string? WikidataId,
     IReadOnlyList<DesignedFirearmDto> Firearms,
-    IReadOnlyList<CitationDto> Citations);
+    IReadOnlyList<CitationDto> Citations,
+    IReadOnlyList<ImageDto> Images);
 
 public static class PersonEndpoints
 {
@@ -57,7 +58,8 @@ public static class PersonEndpoints
                 p.Biography,
                 p.WikidataId,
                 Array.Empty<DesignedFirearmDto>(),
-                Array.Empty<CitationDto>()),
+                Array.Empty<CitationDto>(),
+                p.Images.OrderBy(i => i.SortOrder).ThenBy(i => i.Id).Select(i => ImageDto.From(i)).ToList()),
         }).FirstOrDefaultAsync(ct);
 
         if (person is null)
