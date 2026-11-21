@@ -32,6 +32,8 @@ public sealed class ArmoryWikiDbContext(DbContextOptions<ArmoryWikiDbContext> op
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<WikidataClassTagMap> WikidataClassTagMaps => Set<WikidataClassTagMap>();
     public DbSet<SlugRedirect> SlugRedirects => Set<SlugRedirect>();
+    public DbSet<Source> Sources => Set<Source>();
+    public DbSet<Citation> Citations => Set<Citation>();
     public DbSet<ReferenceSeedLogEntry> ReferenceSeedLog => Set<ReferenceSeedLogEntry>();
 
     public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
@@ -50,6 +52,7 @@ public sealed class ArmoryWikiDbContext(DbContextOptions<ArmoryWikiDbContext> op
         configurationBuilder.Properties<DesignerRole>().HaveConversion<string>();
         configurationBuilder.Properties<RelationType>().HaveConversion<string>();
         configurationBuilder.Properties<SluggedEntity>().HaveConversion<string>();
+        configurationBuilder.Properties<SourceType>().HaveConversion<string>();
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

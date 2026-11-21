@@ -23,7 +23,8 @@ public sealed record CartridgeDetailDto(
     string? Description,
     SlugName? Parent,
     IReadOnlyList<SlugName> Children,
-    IReadOnlyList<FirearmRefDto> Firearms);
+    IReadOnlyList<FirearmRefDto> Firearms,
+    IReadOnlyList<CitationDto> Citations);
 
 public static class CartridgeEndpoints
 {
@@ -66,7 +67,8 @@ public static class CartridgeEndpoints
                 c.Description,
                 c.ParentCartridge == null ? null : new SlugName(c.ParentCartridge.Slug, c.ParentCartridge.Name),
                 Array.Empty<SlugName>(),
-                Array.Empty<FirearmRefDto>()),
+                Array.Empty<FirearmRefDto>(),
+                Array.Empty<CitationDto>()),
         }).FirstOrDefaultAsync(ct);
 
         if (cartridge is null)
@@ -91,6 +93,7 @@ public static class CartridgeEndpoints
             .Select(f => new FirearmRefDto(f.Slug, f.Name, FuzzyDateDto.From(f.DesignDate)))
             .ToListAsync(ct);
 
-        return TypedResults.Ok(cartridge.Dto with { Children = children, Firearms = firearms });
+        var citations = await db.Citations.Where(c => c.CartridgeId == cartridge.Id).OrderBy(c => c.Id).Select(CitationProjection.ToDto).ToListAsync(ct);
+        return TypedResults.Ok(cartridge.Dto with { Children = children, Firearms = firearms, Citations = citations });
     }
 }

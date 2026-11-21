@@ -166,6 +166,82 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                     b.ToTable("cartridges", (string)null);
                 });
 
+            modelBuilder.Entity("ArmoryWiki.Domain.Citation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CartridgeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("cartridge_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FieldName")
+                        .HasColumnType("text")
+                        .HasColumnName("field_name");
+
+                    b.Property<int?>("FirearmId")
+                        .HasColumnType("integer")
+                        .HasColumnName("firearm_id");
+
+                    b.Property<string>("Locator")
+                        .HasColumnType("text")
+                        .HasColumnName("locator");
+
+                    b.Property<int?>("OrganizationId")
+                        .HasColumnType("integer")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int?>("PersonId")
+                        .HasColumnType("integer")
+                        .HasColumnName("person_id");
+
+                    b.Property<int>("SourceId")
+                        .HasColumnType("integer")
+                        .HasColumnName("source_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int?>("VariantId")
+                        .HasColumnType("integer")
+                        .HasColumnName("variant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_citations");
+
+                    b.HasIndex("CartridgeId")
+                        .HasDatabaseName("ix_citations_cartridge_id");
+
+                    b.HasIndex("FirearmId")
+                        .HasDatabaseName("ix_citations_firearm_id");
+
+                    b.HasIndex("OrganizationId")
+                        .HasDatabaseName("ix_citations_organization_id");
+
+                    b.HasIndex("PersonId")
+                        .HasDatabaseName("ix_citations_person_id");
+
+                    b.HasIndex("SourceId")
+                        .HasDatabaseName("ix_citations_source_id");
+
+                    b.HasIndex("VariantId")
+                        .HasDatabaseName("ix_citations_variant_id");
+
+                    b.ToTable("citations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_citations_exactly_one_subject", "num_nonnulls(firearm_id, variant_id, person_id, organization_id, cartridge_id) = 1");
+                        });
+                });
+
             modelBuilder.Entity("ArmoryWiki.Domain.Country", b =>
                 {
                     b.Property<int>("Id")
@@ -755,6 +831,65 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasName("pk_slug_redirects");
 
                     b.ToTable("slug_redirects", (string)null);
+                });
+
+            modelBuilder.Entity("ArmoryWiki.Domain.Source", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Author")
+                        .HasColumnType("text")
+                        .HasColumnName("author");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Isbn")
+                        .HasColumnType("text")
+                        .HasColumnName("isbn");
+
+                    b.Property<string>("Publisher")
+                        .HasColumnType("text")
+                        .HasColumnName("publisher");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Url")
+                        .HasColumnType("text")
+                        .HasColumnName("url");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sources");
+
+                    b.ToTable("sources", (string)null);
                 });
 
             modelBuilder.Entity("ArmoryWiki.Domain.Tag", b =>
@@ -1386,6 +1521,58 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                     b.Navigation("DesignDate");
 
                     b.Navigation("ParentCartridge");
+                });
+
+            modelBuilder.Entity("ArmoryWiki.Domain.Citation", b =>
+                {
+                    b.HasOne("ArmoryWiki.Domain.Cartridge", "Cartridge")
+                        .WithMany()
+                        .HasForeignKey("CartridgeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_citations_cartridges_cartridge_id");
+
+                    b.HasOne("ArmoryWiki.Domain.Firearm", "Firearm")
+                        .WithMany()
+                        .HasForeignKey("FirearmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_citations_firearms_firearm_id");
+
+                    b.HasOne("ArmoryWiki.Domain.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_citations_organizations_organization_id");
+
+                    b.HasOne("ArmoryWiki.Domain.Person", "Person")
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_citations_people_person_id");
+
+                    b.HasOne("ArmoryWiki.Domain.Source", "Source")
+                        .WithMany()
+                        .HasForeignKey("SourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_citations_sources_source_id");
+
+                    b.HasOne("ArmoryWiki.Domain.Variant", "Variant")
+                        .WithMany()
+                        .HasForeignKey("VariantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_citations_variants_variant_id");
+
+                    b.Navigation("Cartridge");
+
+                    b.Navigation("Firearm");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Person");
+
+                    b.Navigation("Source");
+
+                    b.Navigation("Variant");
                 });
 
             modelBuilder.Entity("ArmoryWiki.Domain.Firearm", b =>

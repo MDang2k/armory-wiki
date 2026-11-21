@@ -81,7 +81,9 @@ public sealed record FirearmDetailDto(
     /// <summary>Relations stored on this firearm, e.g. "AKM DerivedFrom AK-47" on the AKM page.</summary>
     IReadOnlyList<RelationDto> RelationsFrom,
     /// <summary>Relations pointing at this firearm, e.g. the same relation on the AK-47 page.</summary>
-    IReadOnlyList<RelationDto> RelationsTo);
+    IReadOnlyList<RelationDto> RelationsTo,
+    /// <summary>Footnotes: citations of the firearm and of its variants, in the order added.</summary>
+    IReadOnlyList<CitationDto> Citations);
 
 public sealed record TagFacetDto(string Slug, string Name, TagGroup Group, int Count);
 

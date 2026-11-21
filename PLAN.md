@@ -331,9 +331,9 @@ Rules shared by every slice:
 - [x] Tests for each.
 
 **3c: sources and citations**
-- [ ] Source and Citation entities (§3.5) and migration; admin CRUD for sources; citations added and removed per subject at `/api/admin/{firearms|variants|people|organizations|cartridges}/{id}/citations`.
-- [ ] Public firearm, person, organization and cartridge detail include their citations.
-- [ ] Tests.
+- [x] Source and Citation entities (§3.5) and migration; admin CRUD for sources; citations listed and added per subject at `/api/admin/{firearms|variants|people|organizations|cartridges}/{id}/citations`, removed with `DELETE /api/admin/citations/{id}`. Citations belong to their subject: they never block deleting it and are deleted with it. A cited source cannot be deleted (409 naming what cites it). `fieldName` is checked for shape, not against the real field list.
+- [x] Public firearm, person, organization and cartridge detail include their citations (a firearm's include its variants', marked with the variant), in the order added.
+- [x] Tests.
 
 **3d: images and videos**
 - [ ] Media and VideoReference entities and migration.

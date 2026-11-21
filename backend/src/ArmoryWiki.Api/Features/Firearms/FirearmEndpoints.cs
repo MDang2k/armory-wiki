@@ -176,12 +176,20 @@ public static class FirearmEndpoints
                 f.RelationsTo
                     .OrderBy(r => r.Type).ThenBy(r => r.FromFirearm.Name)
                     .Select(r => new RelationDto(r.Type, new SlugName(r.FromFirearm.Slug, r.FromFirearm.Name), r.Note))
-                    .ToList()))
+                    .ToList(),
+                Array.Empty<CitationDto>()))
             .FirstOrDefaultAsync(ct);
 
         if (dto is not null)
         {
-            return TypedResults.Ok(dto);
+            // Filter by id so the citations.firearm_id / variant_id indexes apply.
+            var firearmId = await db.Firearms.Where(f => f.Slug == slug).Select(f => f.Id).SingleAsync(ct);
+            var citations = await db.Citations
+                .Where(c => c.FirearmId == firearmId || c.Variant!.FirearmId == firearmId)
+                .OrderBy(c => c.Id)
+                .Select(CitationProjection.ToDto)
+                .ToListAsync(ct);
+            return TypedResults.Ok(dto with { Citations = citations });
         }
 
         if (await SlugResults.FindCurrentSlugAsync(db, SluggedEntity.Firearm, slug, ct) is { } current)

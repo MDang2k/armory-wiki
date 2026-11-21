@@ -20,7 +20,8 @@ public sealed record OrganizationDetailDto(
     string? Description,
     string? WikidataId,
     IReadOnlyList<DesignedFirearmDto> Designed,
-    IReadOnlyList<ManufacturedFirearmDto> Manufactured);
+    IReadOnlyList<ManufacturedFirearmDto> Manufactured,
+    IReadOnlyList<CitationDto> Citations);
 
 public static class OrganizationEndpoints
 {
@@ -58,7 +59,8 @@ public static class OrganizationEndpoints
                 o.Description,
                 o.WikidataId,
                 Array.Empty<DesignedFirearmDto>(),
-                Array.Empty<ManufacturedFirearmDto>()),
+                Array.Empty<ManufacturedFirearmDto>(),
+                Array.Empty<CitationDto>()),
         }).FirstOrDefaultAsync(ct);
 
         if (org is null)
@@ -83,6 +85,7 @@ public static class OrganizationEndpoints
             .Select(m => new ManufacturedFirearmDto(m.Firearm.Slug, m.Firearm.Name, m.IsLicensed, FuzzyDateDto.From(m.From), FuzzyDateDto.From(m.To)))
             .ToListAsync(ct);
 
-        return TypedResults.Ok(org.Dto with { Designed = designed, Manufactured = manufactured });
+        var citations = await db.Citations.Where(c => c.OrganizationId == org.Id).OrderBy(c => c.Id).Select(CitationProjection.ToDto).ToListAsync(ct);
+        return TypedResults.Ok(org.Dto with { Designed = designed, Manufactured = manufactured, Citations = citations });
     }
 }

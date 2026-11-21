@@ -18,7 +18,8 @@ public sealed record PersonDetailDto(
     SlugName? Nationality,
     string? Biography,
     string? WikidataId,
-    IReadOnlyList<DesignedFirearmDto> Firearms);
+    IReadOnlyList<DesignedFirearmDto> Firearms,
+    IReadOnlyList<CitationDto> Citations);
 
 public static class PersonEndpoints
 {
@@ -55,7 +56,8 @@ public static class PersonEndpoints
                 p.Nationality == null ? null : new SlugName(p.Nationality.Slug, p.Nationality.Name),
                 p.Biography,
                 p.WikidataId,
-                Array.Empty<DesignedFirearmDto>()),
+                Array.Empty<DesignedFirearmDto>(),
+                Array.Empty<CitationDto>()),
         }).FirstOrDefaultAsync(ct);
 
         if (person is null)
@@ -74,6 +76,7 @@ public static class PersonEndpoints
             .Select(d => new DesignedFirearmDto(d.Firearm.Slug, d.Firearm.Name, d.Role, FuzzyDateDto.From(d.Firearm.DesignDate)))
             .ToListAsync(ct);
 
-        return TypedResults.Ok(person.Dto with { Firearms = firearms });
+        var citations = await db.Citations.Where(c => c.PersonId == person.Id).OrderBy(c => c.Id).Select(CitationProjection.ToDto).ToListAsync(ct);
+        return TypedResults.Ok(person.Dto with { Firearms = firearms, Citations = citations });
     }
 }
