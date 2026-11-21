@@ -345,7 +345,7 @@ public static class AdminFirearmPartsEndpoints
     }
 
     /// <summary>Advisory lock key held while a firearm's relations are replaced.</summary>
-    private const long DerivationWriteLock = 0x41524D5F52454CL; // "ARM_REL"
+    internal const long DerivationWriteLock = 0x41524D5F52454CL; // "ARM_REL"
 
     private static async Task<Results<Ok<AdminFirearmDto>, ProblemHttpResult>> ReplaceAdoptions(
         int id, uint version, AdoptionsInput input, ArmoryWikiDbContext db, CancellationToken ct)

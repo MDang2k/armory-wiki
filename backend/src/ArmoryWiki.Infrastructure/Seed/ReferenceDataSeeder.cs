@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace ArmoryWiki.Infrastructure.Seed;
 
 /// <summary>
-/// Vocabulary every environment needs: the operating mechanism tree, tags, and the Wikidata class → tag map.
+/// Vocabulary every environment needs: the operating mechanism tree, tags, the Wikidata class → tag map, and the
+/// Wikidata source that imported entities cite.
 /// Runs after every migration. Every entry is seeded at most once (tracked in <c>reference_seed_log</c>): new
 /// entries added here appear on the next run, and entries an admin deleted or renamed stay that way.
 /// </summary>
@@ -70,7 +71,12 @@ public static class ReferenceDataSeeder
         ("Q12800", "machine-gun"),
         ("Q486396", "shotgun"),
         ("Q190570", "sniper"),
+        ("Q124072", "rifle"),
+        ("Q2291248", "rifle"), // semi-automatic rifle
     ];
+
+    /// <summary>Identifies the Wikidata <see cref="Source"/> (PLAN.md Phase 4a).</summary>
+    public const string WikidataSourceUrl = "https://www.wikidata.org";
 
     public static async Task SeedAsync(ArmoryWikiDbContext db, CancellationToken ct = default)
     {
@@ -134,6 +140,11 @@ public static class ReferenceDataSeeder
             {
                 db.WikidataClassTagMaps.Add(new WikidataClassTagMap { Qid = qid, Tag = tag });
             }
+        }
+
+        if (FirstTime("source:wikidata") && !await db.Sources.AnyAsync(x => x.Url == WikidataSourceUrl, ct))
+        {
+            db.Sources.Add(new Source { Type = SourceType.Dataset, Title = "Wikidata", Publisher = "Wikimedia Foundation", Url = WikidataSourceUrl });
         }
 
         await db.SaveChangesAsync(ct);

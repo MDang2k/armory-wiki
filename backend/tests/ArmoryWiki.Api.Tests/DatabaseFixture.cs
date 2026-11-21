@@ -58,6 +58,28 @@ public sealed class DatabaseFixture : IAsyncLifetime
     /// <summary>A context on the test database, owned by the caller.</summary>
     public ArmoryWikiDbContext NewDbContext() => new(_options);
 
+    /// <summary>
+    /// A separate, freshly migrated and seeded database in the same container, for tests (importers) that rewrite
+    /// seeded rows other tests rely on.
+    /// </summary>
+    public async Task<DbContextOptions<ArmoryWikiDbContext>> CreateSeededDatabaseAsync()
+    {
+        var name = "scratch_" + Guid.NewGuid().ToString("N");
+        await using (var main = NewDbContext())
+        {
+            var createDatabase = "CREATE DATABASE " + name; // a GUID: nothing to escape
+            await main.Database.ExecuteSqlRawAsync(createDatabase);
+        }
+
+        var builder = new DbContextOptionsBuilder<ArmoryWikiDbContext>();
+        ArmoryWikiDbContext.Configure(builder, new Npgsql.NpgsqlConnectionStringBuilder(_postgres.GetConnectionString()) { Database = name }.ConnectionString);
+        await using var db = new ArmoryWikiDbContext(builder.Options);
+        await db.Database.MigrateAsync();
+        await Infrastructure.Seed.ReferenceDataSeeder.SeedAsync(db);
+        await Infrastructure.Seed.DevelopmentSeeder.SeedAsync(db);
+        return builder.Options;
+    }
+
     public HttpClient Client(bool followRedirects = true) =>
         Factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = followRedirects });
 

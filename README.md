@@ -14,7 +14,7 @@ Early development, built phase by phase from [PLAN.md](PLAN.md).
 | 1 | Domain model, database, development seed | Done |
 | 2 | Read API | Done |
 | 3 | Admin API, sources and media | Done |
-| 4 | Importers (Wikidata, Commons, Wikipedia, Forgotten Weapons videos) | Next |
+| 4 | Importers (Wikidata, Commons, Wikipedia, Forgotten Weapons videos) | In progress |
 | 5 | Frontend, read-only | |
 | 6 | Deploy | |
 | 7 | Admin UI | |
@@ -82,8 +82,8 @@ cd frontend && npm run lint && npm run build
 ```
 backend/
   src/ArmoryWiki.Domain/          entities, enums, FuzzyDate
-  src/ArmoryWiki.Infrastructure/  DbContext, EF configurations, migrations, seed, importers
-  src/ArmoryWiki.Api/             Minimal API endpoints and CLI commands
+  src/ArmoryWiki.Infrastructure/  DbContext, EF configurations, migrations, seed
+  src/ArmoryWiki.Api/             Minimal API endpoints and importers (CLI commands)
   tests/ArmoryWiki.Api.Tests/     integration tests against real Postgres
 frontend/                         Next.js app
 docs/adr/                         architecture decision records

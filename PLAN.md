@@ -50,8 +50,8 @@ armory-wiki/
 │   ├── ArmoryWiki.sln
 │   ├── src/
 │   │   ├── ArmoryWiki.Domain/         # entities, enums, value objects. No dependencies.
-│   │   ├── ArmoryWiki.Infrastructure/ # DbContext, EF configurations, migrations, seeding, file store, importers
-│   │   └── ArmoryWiki.Api/            # endpoints, DTOs, validators, Program.cs, CLI subcommands
+│   │   ├── ArmoryWiki.Infrastructure/ # DbContext, EF configurations, migrations, seeding, file store
+│   │   └── ArmoryWiki.Api/            # endpoints, DTOs, validators, Program.cs, importers (CLI subcommands)
 │   └── tests/
 │       └── ArmoryWiki.Api.Tests/      # integration tests (Testcontainers) + importer mapper tests (fixtures)
 └── frontend/
@@ -360,21 +360,21 @@ Rules shared by every importer:
 - `--dry-run` does the real run inside one transaction and rolls it back, so its counts (created, updated, unchanged, skipped) are exact. It still fetches.
 - **Run report:** a console summary plus the full report as JSON in `import-reports/<command>-<utc timestamp>.json` (gitignored): skipped values and why, merged or vanished QIDs, missing labels, rejected licenses, conflicts. No database table until the Phase 7 admin UI needs one.
 - Wikimedia requests send `User-Agent: ArmoryWiki-importer/1.0 (<project URL>)` from configuration (`Import:Contact`, default the GitHub repository URL), never a personal address. Requests are sequential, with `maxlag` and backoff on 429/503.
-- After each batch, call the frontend revalidate hook (no-op until Phase 5 exists).
+- After each batch, call the frontend revalidate hook. Phase 5 adds it together with the hook itself (4a ships no empty stub).
 
 **4a: shared plumbing and `import-wikidata`**
-- [ ] Plumbing: command runner, HTTP client (User-Agent, `maxlag`, backoff), advisory lock, run report, dry run.
-- [ ] **Discovery:** SPARQL returns QIDs only. An item qualifies when its "instance of" **or** "subclass of" chain reaches a type class in `WikidataClassTagMap` (an include list: assault rifle, battle rifle, carbine, rifle, pistol, revolver, submachine gun, machine gun, shotgun, sniper rifle; add "rifle" and any missing small-arms class the dry run shows). QIDs in the map itself are excluded, as are individual specimens, and an item needs at least one of manufacturer, ammunition or designer.
-- [ ] **Details:** `wbgetentities` in batches of 50 (claims, labels, aliases, sitelinks, redirects). A merged item (redirect) has its stored QID moved to the target, unless another entity already holds it (logged). Deleted or no-longer-matching QIDs are logged, never touched. Items without an English label are skipped and logged.
-- [ ] **Firearm mapping:** each item becomes one Firearm with an auto-created base variant. English label → name and slug; aliases → alternative names; inception → design date (Wikidata precision → `FuzzyDate`); English sitelink → `WikipediaTitle`; "instance of"/"subclass of" → type tags via the map; "based on" → *derived from* (the 3a loop check applies; a looping link is logged and skipped).
-- [ ] **Designers:** "designed by" → a Person when the target is a human, otherwise an Organization. One designer is the **lead designer**; several are all **co-designers** (an admin picks the lead).
-- [ ] **Country of origin:** used only when Wikidata has exactly one value; several are logged and left empty. Unknown countries are auto-created from their QID, `IsHistorical = true` when Wikidata has a dissolution date.
-- [ ] **Ammunition:** every value becomes a chambering on the base variant; **primary** only when there is exactly one.
-- [ ] **Specs** on the base variant, normalized to metric when the unit QID is known (skipped and logged otherwise): length, barrel length, muzzle velocity, rate of fire (one value → min = max), effective range. Mass goes to `WeightEmptyG` only with an empty/unloaded qualifier; otherwise into `ExtraSpecs` as `weight (unspecified)` with its unit.
-- [ ] Operating mechanism and production dates are **not** imported (admins set the mechanism in review); the run report counts items carrying a mechanism-like claim so a QID→mechanism map can be added later if it pays off.
-- [ ] **Related entities, one level deep**, created as drafts: people (label, aliases, birth, death, nationality), organizations (label, aliases, founding date, country), cartridges (label, aliases, design date, country, parent cartridge when that one was imported too), countries. Their own references are not followed further.
-- [ ] **Citations:** the reference seeder adds one Source "Wikidata" (Dataset, `https://www.wikidata.org`). Every imported entity gets one citation to it with the item URL as locator, added only when it has none yet.
-- [ ] Tests: mapper fixtures for AK-47, M1 Garand and a firearm with a historical country; unit and qualifier handling; Testcontainers tests proving a re-import is idempotent, respects `LockedFields`, only fills empty fields on published content, matches seeded firearms by QID without duplicating them, and that a dry run writes nothing.
+- [x] Plumbing (`Api/Import/`): command runner, HTTP client (User-Agent, `maxlag`, backoff, and re-asking for entities dropped from answers over the API's 12 MB size limit), advisory lock, run report, dry run.
+- [x] **Discovery:** SPARQL returns QIDs only. An item qualifies when its "instance of" **or** "subclass of" chain reaches a type class in `WikidataClassTagMap` (an include list: assault rifle, battle rifle, carbine, rifle, pistol, revolver, submachine gun, machine gun, shotgun, sniper rifle; add "rifle" and any missing small-arms class the dry run shows). QIDs in the map itself are excluded, as are individual specimens (instances of a weapon or firearm model), weapon and firearm *families*, and artillery models; an item needs at least one of manufacturer, ammunition or designer. The first live run finds about 2,260 items. About ten cannons still slip in through "machine gun" (AK-630, M61 Vulcan); excluding everything that reaches "artillery" would also drop the M134 Minigun, so admins delete those drafts in review.
+- [x] **Details:** `wbgetentities` in batches of 50 (claims, labels, aliases, sitelinks, redirects). A merged item (redirect) has its stored QID moved to the target, unless another entity already holds it (logged). Deleted or no-longer-matching QIDs are logged, never touched. Items without an English label (or the language-neutral `mul` label many items now use instead) are skipped and logged. Claims that point at a merged item are followed to it. Stored firearms are checked for merges; a stored person, organization or cartridge whose item was merged would come back as a new draft.
+- [x] **Firearm mapping:** each item becomes one Firearm with an auto-created base variant. English label → name and slug; aliases → alternative names; inception → design date (Wikidata precision → `FuzzyDate`; Julian-calendar days converted to Gregorian); English sitelink → `WikipediaTitle`; the item's own "instance of"/"subclass of" values → type tags via the map ("rifle" and "semi-automatic rifle" added to it); "based on" → *derived from* (the 3a loop check applies; a looping link is logged and skipped).
+- [x] **Designers:** "designed by" → a Person when the target is a human, otherwise an Organization. One designer is the **lead designer**; several are all **co-designers** (an admin picks the lead).
+- [x] **Country of origin:** used only when Wikidata has exactly one value; several are logged and left empty. Unknown countries are auto-created from their QID, `IsHistorical = true` when Wikidata has a dissolution date; countries are never updated (they have no locks).
+- [x] **Ammunition:** every value becomes a chambering on the base variant; **primary** only when there is exactly one.
+- [x] **Specs** on the base variant, normalized to metric when the unit QID is known (skipped and logged otherwise): length, barrel length, muzzle velocity, rate of fire (one value → min = max), effective range. Mass goes into `ExtraSpecs` as `weight (unspecified)` with its unit; no firearm item on Wikidata states whether its mass is empty, so `WeightEmptyG` is never imported. Several values for one spec are logged and skipped. A value removed on Wikidata stays here.
+- [x] Operating mechanism and production dates are **not** imported (admins set the mechanism in review). Firearm items on Wikidata have no mechanism property (none among the 25 most used), so there is nothing to map yet.
+- [x] **Related entities, one level deep**, created as drafts: people (label, birth, death, nationality), organizations (label, founding date, country), cartridges (label, aliases, design date, country, parent cartridge when that one was imported too), countries. Their own references are not followed further.
+- [x] **Citations:** the reference seeder adds one Source "Wikidata" (Dataset, `https://www.wikidata.org`). Every imported entity gets one citation to it with the item URL as locator, added only when it has none yet.
+- [x] Tests: mapper fixtures for AK-47, M1 Garand and a firearm with a historical country; unit and qualifier handling; Testcontainers tests proving a re-import is idempotent, respects `LockedFields`, only fills empty fields on published content, matches seeded firearms by QID without duplicating them, that a dry run writes nothing, and that a second concurrent run is refused. Import tests each get their own freshly seeded database.
 
 **4b: `import-commons`**
 - [ ] For firearms with a Wikidata image (`P18`, usually one): fetch file metadata from the Commons API; allow only CC0, Public Domain, CC BY, CC BY-SA (any version), skip and log others.
@@ -394,7 +394,7 @@ Rules shared by every importer:
 - [ ] Idempotent on (firearm, YouTube video ID) including **rejected** rows, so a rejected suggestion never returns.
 - [ ] Tests: matching against fixtures; a rejected video is not re-suggested.
 
-**Done when** (checked after 4a): a dry run reports sensible counts; a real run against a fresh DB imports firearms without duplicating seeded ones; a second run changes nothing; tests are green. 4b–4d each end with their tests green and a dry run reporting sensible counts.
+**Done when** (checked after 4a; met: a live run on a fresh database created 2,215 firearms and matched 14 of the 15 seeded ones by QID, and a second run reported everything unchanged): a dry run reports sensible counts; a real run against a fresh DB imports firearms without duplicating seeded ones; a second run changes nothing; tests are green. 4b–4d each end with their tests green and a dry run reporting sensible counts.
 
 ### Phase 5: Frontend, read-only
 - [ ] Generate TS types from `/openapi/v1.json` into `src/lib/api/schema.d.ts` (`npm run gen:api` script); typed fetch wrapper with base URL from `API_BASE_URL` env var and fetch tags

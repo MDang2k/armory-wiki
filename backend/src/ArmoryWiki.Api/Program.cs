@@ -13,6 +13,7 @@ using ArmoryWiki.Api.Features.Mechanisms;
 using ArmoryWiki.Api.Features.Organizations;
 using ArmoryWiki.Api.Features.People;
 using ArmoryWiki.Api.Features.Reference;
+using ArmoryWiki.Api.Import;
 using ArmoryWiki.Infrastructure.Media;
 using ArmoryWiki.Infrastructure.Persistence;
 using ArmoryWiki.Infrastructure.Seed;
@@ -78,6 +79,12 @@ if (app.Environment.IsDevelopment())
     await db.Database.MigrateAsync();
     await ReferenceDataSeeder.SeedAsync(db); // production runs this in the migrate container too
     await DevelopmentSeeder.SeedAsync(db);
+}
+
+if (ImportCommands.IsImportCommand(args))
+{
+    Environment.ExitCode = await ImportCommands.RunAsync(args, app.Services);
+    return;
 }
 
 await AdminAuth.EnsureAdminAccountAsync(app.Services);

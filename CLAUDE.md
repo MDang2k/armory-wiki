@@ -15,6 +15,7 @@ cd backend && dotnet build                              # must stay at zero warn
 cd backend && dotnet run --project src/ArmoryWiki.Api   # http://localhost:5080; in Development it migrates + seeds on startup
 cd backend && dotnet test                               # needs Docker running (Testcontainers Postgres)
 cd backend && dotnet ef migrations add <Name> -p src/ArmoryWiki.Infrastructure -s src/ArmoryWiki.Api -o Persistence/Migrations
+cd backend && dotnet run --project src/ArmoryWiki.Api -- import-wikidata --dry-run   # live Wikidata; report in import-reports/
 cd frontend && npm run dev                              # http://localhost:3000
 cd frontend && npm run lint && npm run build
 ```
@@ -22,8 +23,8 @@ cd frontend && npm run lint && npm run build
 ## Layout
 
 - `backend/src/ArmoryWiki.Domain`: entities, enums, value objects. No dependencies.
-- `backend/src/ArmoryWiki.Infrastructure`: DbContext, EF configurations, migrations, seeding, file store, importers.
-- `backend/src/ArmoryWiki.Api`: Minimal API endpoints, DTOs, validators, CLI subcommands.
+- `backend/src/ArmoryWiki.Infrastructure`: DbContext, EF configurations, migrations, seeding, file store.
+- `backend/src/ArmoryWiki.Api`: Minimal API endpoints, DTOs, validators, and the importers (`Import/`, run as CLI subcommands; they reuse the admin slug and loop helpers).
 - `backend/tests/ArmoryWiki.Api.Tests`: integration tests (Testcontainers Postgres) and importer mapper tests.
 - `frontend/`: Next.js 16 App Router + TypeScript + Tailwind. Read `frontend/AGENTS.md` before writing frontend code.
 - Shared build settings (TFM, nullable, warnings-as-errors) live in `backend/Directory.Build.props`.

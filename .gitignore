@@ -29,3 +29,6 @@ Thumbs.db
 
 # Uploaded images in local development
 .media/
+
+# Import run reports (PLAN.md Phase 4)
+import-reports/
