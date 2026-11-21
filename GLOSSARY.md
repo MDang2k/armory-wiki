@@ -92,7 +92,7 @@ _Avoid_: fire selector setting, "single"
 ## Specifications
 
 **Empty weight**:
-Weight without magazine and ammunition.
+Weight without magazine and ammunition. A weight whose source does not say what it includes is not an empty weight; it is kept as an unspecified weight.
 _Avoid_: unloaded weight, weight
 
 **Overall length**:
@@ -164,3 +164,7 @@ Returning published content to draft, which removes it from the public site.
 **Locked field**:
 A field an admin has changed by hand. Imports never overwrite it until an admin unlocks it.
 _Avoid_: protected field, override
+
+**Import**:
+Bringing facts from an outside source (Wikidata, Wikimedia Commons, Wikipedia, YouTube) into the encyclopedia, matched by the source's own identifier. An import creates drafts, refreshes unlocked fields of drafts and only fills empty fields of published content. It never publishes, unpublishes or deletes anything; what disappeared from the source is reported for an admin instead.
+_Avoid_: sync, scrape

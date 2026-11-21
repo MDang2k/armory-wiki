@@ -349,21 +349,52 @@ Rules shared by every slice:
 ### Phase 4: Importers
 Wikidata is the main content source (ADR-0004). All importers are CLI subcommands of the API project (`dotnet run --project src/ArmoryWiki.Api -- <command> [--dry-run]`), run by hand (on the VPS as one-shot `docker compose run` containers). No scheduler.
 
-Shared rules:
-- Idempotent upserts keyed on QID / Commons file name / YouTube video ID. Never write a field listed in `LockedFields`.
-- Everything new lands as `Status = Draft`.
-- Each importer is split into **fetch** (HTTP → raw JSON/HTML) and **map** (pure functions raw → entities). Mappers are tested with saved fixture files; no live-network tests.
-- `--dry-run` prints counts and a sample without writing.
-- Wikimedia requests send a descriptive User-Agent with a **project** contact address from configuration (`Import:ContactEmail`), not a personal one. Respect rate limits (sequential requests, backoff on 429).
+Built in four slices (4a–4d), each tested, reviewed and committed on its own. Terms follow GLOSSARY.md: *import*, *draft*, *locked field*, *empty weight*.
+
+Rules shared by every importer:
+- **What an import may write** (GLOSSARY.md *import*): new entities land as Draft. On a **draft**, an import refreshes every unlocked field and adds missing list entries (never removes one). On **published** content it only fills fields and lists that are empty. It never changes `Status`, and never deletes or unpublishes anything. Locked fields are never written; lists are locked as a whole under their 3a lock keys (`tags`, `designers`, `manufacturers`, `relations`, `chamberings/{variantId}`, …).
+- Idempotent upserts keyed on QID / Commons file name / (firearm, YouTube video ID).
+- Each importer is split into **fetch** (HTTP → raw JSON/HTML) and **map** (pure functions raw → entities). Mappers are tested with saved fixture files (plain API JSON); no live-network tests.
+- CLI subcommands dispatched from the API's `Program.cs` before the web host starts. Each command takes an advisory lock, so a second run of the same importer exits at once.
+- Items are saved one at a time; a row-version conflict with an admin edit skips that item and logs it (the next run picks it up).
+- `--dry-run` does the real run inside one transaction and rolls it back, so its counts (created, updated, unchanged, skipped) are exact. It still fetches.
+- **Run report:** a console summary plus the full report as JSON in `import-reports/<command>-<utc timestamp>.json` (gitignored): skipped values and why, merged or vanished QIDs, missing labels, rejected licenses, conflicts. No database table until the Phase 7 admin UI needs one.
+- Wikimedia requests send `User-Agent: ArmoryWiki-importer/1.0 (<project URL>)` from configuration (`Import:Contact`, default the GitHub repository URL), never a personal address. Requests are sequential, with `maxlag` and backoff on 429/503.
 - After each batch, call the frontend revalidate hook (no-op until Phase 5 exists).
 
-- [ ] **`import-wikidata`**: SPARQL for small arms only: items whose "instance of" is a subclass of firearm, **excluding** artillery, autocannon, grenade launcher, air gun, flare gun, toy and individual-specimen classes, and requiring at least one of inception, manufacturer or ammunition. Maps: label, aliases, inception (with Wikidata precision → `FuzzyDate`), designer (human → Person, otherwise Organization), manufacturer, country of origin (auto-create Country), ammunition (→ Cartridge + primary chambering on the base variant), "based on" → `DerivedFrom` relation, "instance of" → tags via `WikidataClassTagMap`, and specs where present (mass, length, barrel length, muzzle velocity, rate of fire) normalized to metric. Skip any value whose unit is unknown or ambiguous. Each Wikidata item becomes one Firearm with an auto-created base variant. Adds a Citation to the Wikidata source per entity.
-- [ ] **`import-commons`**: for firearms with a Wikidata image, fetch file metadata from the Commons API; allow only CC0, Public Domain, CC BY, CC BY-SA (any version), skip and log others; copy the file into the file store (never hotlink), generate sizes, store author (HTML stripped), license, file-page URL. Max 5 images per firearm, main image first.
-- [ ] **`import-wikipedia`**: for firearms with an English Wikipedia sitelink, fetch article HTML via the Wikipedia REST API, convert to Markdown, map sections by heading (History / Development / Design → `DevelopmentHistory`; Service / Usage / Combat / Users → `ServiceHistory`), drop infoboxes, references, "See also" and everything else; store `WikipediaTitle` + `WikipediaRevisionId`. Firearms only for now.
-- [ ] **`import-fw-videos`**: list the Forgotten Weapons channel uploads via the YouTube Data API (API key from configuration), fuzzy-match titles against firearm names and aliases, write `VideoReference` rows as `Suggested`. No scraping of forgottenweapons.com and no copied text.
-- [ ] Tests: mapper fixtures for AK-47, M1 Garand and a firearm with a historical country; one Testcontainers test proving re-import is idempotent and respects `LockedFields`; seeded firearms are matched by QID, not duplicated.
+**4a: shared plumbing and `import-wikidata`**
+- [ ] Plumbing: command runner, HTTP client (User-Agent, `maxlag`, backoff), advisory lock, run report, dry run.
+- [ ] **Discovery:** SPARQL returns QIDs only. An item qualifies when its "instance of" **or** "subclass of" chain reaches a type class in `WikidataClassTagMap` (an include list: assault rifle, battle rifle, carbine, rifle, pistol, revolver, submachine gun, machine gun, shotgun, sniper rifle; add "rifle" and any missing small-arms class the dry run shows). QIDs in the map itself are excluded, as are individual specimens, and an item needs at least one of manufacturer, ammunition or designer.
+- [ ] **Details:** `wbgetentities` in batches of 50 (claims, labels, aliases, sitelinks, redirects). A merged item (redirect) has its stored QID moved to the target, unless another entity already holds it (logged). Deleted or no-longer-matching QIDs are logged, never touched. Items without an English label are skipped and logged.
+- [ ] **Firearm mapping:** each item becomes one Firearm with an auto-created base variant. English label → name and slug; aliases → alternative names; inception → design date (Wikidata precision → `FuzzyDate`); English sitelink → `WikipediaTitle`; "instance of"/"subclass of" → type tags via the map; "based on" → *derived from* (the 3a loop check applies; a looping link is logged and skipped).
+- [ ] **Designers:** "designed by" → a Person when the target is a human, otherwise an Organization. One designer is the **lead designer**; several are all **co-designers** (an admin picks the lead).
+- [ ] **Country of origin:** used only when Wikidata has exactly one value; several are logged and left empty. Unknown countries are auto-created from their QID, `IsHistorical = true` when Wikidata has a dissolution date.
+- [ ] **Ammunition:** every value becomes a chambering on the base variant; **primary** only when there is exactly one.
+- [ ] **Specs** on the base variant, normalized to metric when the unit QID is known (skipped and logged otherwise): length, barrel length, muzzle velocity, rate of fire (one value → min = max), effective range. Mass goes to `WeightEmptyG` only with an empty/unloaded qualifier; otherwise into `ExtraSpecs` as `weight (unspecified)` with its unit.
+- [ ] Operating mechanism and production dates are **not** imported (admins set the mechanism in review); the run report counts items carrying a mechanism-like claim so a QID→mechanism map can be added later if it pays off.
+- [ ] **Related entities, one level deep**, created as drafts: people (label, aliases, birth, death, nationality), organizations (label, aliases, founding date, country), cartridges (label, aliases, design date, country, parent cartridge when that one was imported too), countries. Their own references are not followed further.
+- [ ] **Citations:** the reference seeder adds one Source "Wikidata" (Dataset, `https://www.wikidata.org`). Every imported entity gets one citation to it with the item URL as locator, added only when it has none yet.
+- [ ] Tests: mapper fixtures for AK-47, M1 Garand and a firearm with a historical country; unit and qualifier handling; Testcontainers tests proving a re-import is idempotent, respects `LockedFields`, only fills empty fields on published content, matches seeded firearms by QID without duplicating them, and that a dry run writes nothing.
 
-**Done when:** a dry run reports sensible counts; a real run against a fresh DB imports firearms without duplicating seeded ones; a second run changes nothing; tests are green.
+**4b: `import-commons`**
+- [ ] For firearms with a Wikidata image (`P18`, usually one): fetch file metadata from the Commons API; allow only CC0, Public Domain, CC BY, CC BY-SA (any version), skip and log others.
+- [ ] Download Commons' 2560 px-wide rendition (never the original, never hotlinked) and run it through `ImageProcessor`/`FileStore` under the hash advisory lock. Store author (HTML stripped), license, file-page URL as `SourceUrl`, `CommonsFileName`.
+- [ ] Idempotent on `CommonsFileName`; published firearms get an image only when they have none. More images are added by hand.
+- [ ] Tests: license allow/deny mapping and attribution stripping from fixtures; re-run adds nothing.
+
+**4c: `import-wikipedia`**
+- [ ] For firearms with a `WikipediaTitle`: fetch article HTML via the Wikipedia REST API and convert it with our own small converter (paragraphs, headings, lists, links, bold, italic; everything else, including tables, infoboxes, references, images and templates, is dropped).
+- [ ] Lead section → `Summary`; History / Development / Design → `DevelopmentHistory`; Service / Usage / Combat / Users → `ServiceHistory`; "See also" and the rest dropped. Store `WikipediaRevisionId` for CC BY-SA attribution.
+- [ ] Draft/published and lock rules as above. Firearms only for now.
+- [ ] Tests: converter and section mapping from saved article HTML.
+
+**4d: `import-fw-videos`**
+- [ ] List the Forgotten Weapons channel uploads via the YouTube Data API (`YouTube:ApiKey` from configuration; the command stops with a clear message when it is missing).
+- [ ] Match each title against firearm names and alternative names with `word_similarity` ≥ 0.6, at most 3 firearms per video; write `Video` rows as `Suggested`, storing title, channel and published date only (no descriptions, no copied text, no scraping of forgottenweapons.com).
+- [ ] Idempotent on (firearm, YouTube video ID) including **rejected** rows, so a rejected suggestion never returns.
+- [ ] Tests: matching against fixtures; a rejected video is not re-suggested.
+
+**Done when** (checked after 4a): a dry run reports sensible counts; a real run against a fresh DB imports firearms without duplicating seeded ones; a second run changes nothing; tests are green. 4b–4d each end with their tests green and a dry run reporting sensible counts.
 
 ### Phase 5: Frontend, read-only
 - [ ] Generate TS types from `/openapi/v1.json` into `src/lib/api/schema.d.ts` (`npm run gen:api` script); typed fetch wrapper with base URL from `API_BASE_URL` env var and fetch tags
@@ -387,7 +418,7 @@ Shared rules:
 - [ ] `deploy/Caddyfile`: automatic TLS; `/api/revalidate` → web; `/api/*` → api; `/media/*` → media volume with long cache headers; everything else → web
 - [ ] GitHub Actions: build + test on PR; on `main`, build images → push to GHCR → SSH to the VPS → `docker compose pull && docker compose up -d`
 - [ ] `UseForwardedHeaders` trusting only Caddy, so the per-IP login rate limit and lockout see real client addresses (otherwise every visitor shares one bucket and anyone can keep the admin locked out)
-- [ ] Secrets via a `.env` on the VPS (never committed); admin credentials, DB password, revalidate secret, YouTube API key, import contact email
+- [ ] Secrets via a `.env` on the VPS (never committed); admin credentials, DB password, revalidate secret, YouTube API key (the import contact is the public project URL, not a secret)
 - [ ] Nightly backups: `pg_dump` + media volume to offsite storage (e.g. Backblaze B2); document and test a restore
 
 **Done when:** the site is live on its domain over HTTPS, a push to `main` deploys automatically, and a backup has been restored into a scratch DB successfully.

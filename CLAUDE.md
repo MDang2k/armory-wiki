@@ -39,7 +39,7 @@ Data:
 - `CreatedAt`/`UpdatedAt` (UTC) are set in `SaveChangesAsync`.
 - Long-form text is Markdown in a `text` column.
 - Public endpoints return `Published` rows only; admin endpoints opt out explicitly.
-- Importers match on `WikidataId` only and never write a field listed in `LockedFields`.
+- Importers match on `WikidataId` only, never write a field listed in `LockedFields`, only fill empty fields on published content, and never change `Status` or delete anything.
 
 Backend:
 - File-scoped namespaces, `sealed` classes by default, records for DTOs.
