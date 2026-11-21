@@ -8,6 +8,8 @@ Encyclopedic firearms database. Work follows `PLAN.md` phase by phase; big decis
 cp .env.example .env                                    # once; set a real password
 cd backend && dotnet tool restore                       # once; installs dotnet-ef 10
 cd backend && dotnet user-secrets set ConnectionStrings:ArmoryWiki "Host=localhost;Port=5432;Database=armorywiki;Username=armorywiki;Password=<from .env>" --project src/ArmoryWiki.Api   # once
+cd backend && dotnet user-secrets set Admin:Email admin@armorywiki.local --project src/ArmoryWiki.Api      # once; the admin
+cd backend && dotnet user-secrets set Admin:Password "<12+ chars, upper, digit, symbol>" --project src/ArmoryWiki.Api   # account is created on startup
 docker compose up -d                                    # Postgres 17 on :5432
 cd backend && dotnet build                              # must stay at zero warnings (warnings are errors)
 cd backend && dotnet run --project src/ArmoryWiki.Api   # http://localhost:5080; in Development it migrates + seeds on startup
@@ -44,6 +46,8 @@ Backend:
 - `async` all the way with `CancellationToken` passed through; no `.Result`/`.Wait()`.
 - Never return EF entities from endpoints; project into DTOs.
 - The API's DbContext is **no-tracking by default** (reads dominate; projecting owned `FuzzyDate`s requires it). Write paths call `AsTracking()`; seeders switch tracking on themselves.
+- Admin endpoints live under `/api/admin` (group requires the `Admin` policy and the `X-XSRF-TOKEN` antiforgery header on writes). Writes take `?version=` (the firearm's xmin) and answer 409 when stale; use the `FirearmEditing` helpers (`LoadForWriteAsync`, `SaveFirearmAsync`, `Lock`, slug claiming) rather than re-implementing them.
+- Never run `dotnet ef migrations remove --no-build`: with a stale build it removes the previous (committed) migration instead.
 - Endpoints live in `Api/Features/<Resource>/` with their DTOs, return `TypedResults`, and declare non-200 answers (`ProducesProblem`, `ProducesSlugMisses`) so the OpenAPI document stays complete for the frontend.
 - Every migration gets a descriptive name. **Never edit a migration that has been applied.**
 - Every new endpoint gets at least one integration test. No live-network tests.

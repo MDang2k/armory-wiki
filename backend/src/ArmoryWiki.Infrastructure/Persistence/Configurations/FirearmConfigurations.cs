@@ -14,6 +14,9 @@ internal sealed class FirearmConfiguration : IEntityTypeConfiguration<Firearm>
         b.HasIndex(f => f.Slug).IsUnique();
         b.HasIndex(f => f.WikidataId).IsUnique();
         b.HasIndex(f => f.Status);
+        // Postgres's xmin system column: the firearm's version for optimistic concurrency. Every admin write to
+        // the firearm or its children touches this row, so one version guards the whole firearm.
+        b.Property<uint>(ArmoryWikiDbContext.Version).IsRowVersion();
         b.Property(f => f.Summary).HasMaxLength(500);
         b.OwnsOne(f => f.DesignDate, d => d.HasIndex(x => x.Year));
         b.HasQueryFilter(f => f.Status == PublishStatus.Published);

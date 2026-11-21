@@ -310,18 +310,19 @@ Rules shared by every slice:
 - Optimistic concurrency on Postgres `xmin`: every admin DTO has `version`, every `PUT` sends it, and a mismatch answers 409 ProblemDetails carrying the current version.
 - Write handlers load with `AsTracking()` (the API context is no-tracking by default).
 - FluentValidation on every write DTO: slug format `^[a-z0-9]+(-[a-z0-9]+)*$`; firearm slugs `facets` and `compare` are reserved because they are API routes; positive measurements; `FuzzyDate` consistency (Month 1–12, Day valid for the month, `YearTo >= Year`, a Decade starts at a year ending in 0).
-- Slugs are generated from the name when not supplied: lowercase, `×` → `x`, accents removed, Cyrillic transliterated, every other run of non-alphanumerics → `-`, trimmed; collisions get `-2`, `-3`, … A slug change writes a `SlugRedirect`. A live slug always beats a redirect: taking a slug deletes any redirect with that old slug, including renaming back to it.
+- Slugs are generated from the name when not supplied: lowercase, `×` → `x`, accents removed, Cyrillic transliterated, every other run of non-alphanumerics → `-`, trimmed; collisions get `-2`, `-3`, … A slug change writes a `SlugRedirect` (variants have no public route, so variant renames write none). A live slug always beats a redirect: taking a slug deletes any redirect with that old slug, including renaming back to it.
 - Deleting: firearms and their child rows only while Draft; people, organizations, cartridges, countries, mechanisms and tags only when nothing references them (409 listing the references). Deleting also removes the entity's slug redirects and image files.
+- Creating something locks every field the admin supplied (an admin chose those values); later imports fill only what was left empty.
 - `POST .../publish` enforces the publish requirements from GLOSSARY.md (400 listing what is missing); `POST .../unpublish` returns content to Draft.
 
 **3a: auth and firearms**
-- [ ] ASP.NET Core Identity inside `ArmoryWikiDbContext` (same migrations, snake_case tables). Own endpoints only, no `MapIdentityApi` (it exposes public registration): `POST /api/admin/auth/login`, `POST /api/admin/auth/logout`, `GET /api/admin/auth/me`, `GET /api/admin/auth/antiforgery`. Lockout after 5 failed logins; login rate-limited per IP. Cookie `HttpOnly`, `Secure`, `SameSite=Strict`.
-- [ ] Antiforgery token header required on every unsafe `/api/admin` request, checked by one group filter.
-- [ ] One `Admin` role. The admin user is created from configuration (`Admin:Email`, `Admin:Password`) in every environment when missing: user secrets in Development, `.env` in production.
-- [ ] Firearm admin endpoints: list (`status`, `q`, sort by `updatedAt` newest first, `missingForPublish` per item), detail, create (creates the base variant in the same transaction), `PUT` core fields, variant CRUD at `/variants/{variantId}`, `POST /variants/{variantId}/make-base`, replace-the-list `PUT`s for tags, designers, manufacturers, relations, adoptions and chamberings, publish, unpublish, delete, unlock.
-- [ ] A *derived from* or *copy of* link that would create a cycle is rejected (400 naming the loop).
-- [ ] The base variant cannot be deleted; promote another variant first.
-- [ ] Tests: 401 when not logged in; 400 without the antiforgery header; validation 400s; 409 on a stale version; locks appended, and unlock; slug redirect written, and the live-slug-wins rules; cycle rejection; make-base; publish requirements; delete rules; happy path from create to publish to visible on the public API.
+- [x] ASP.NET Core Identity inside `ArmoryWikiDbContext` (same migrations, snake_case tables). Own endpoints only, no `MapIdentityApi` (it exposes public registration): `POST /api/admin/auth/login`, `POST /api/admin/auth/logout`, `GET /api/admin/auth/me`, `GET /api/admin/auth/antiforgery`. Lockout after 5 failed logins; login rate-limited per IP. Cookie `HttpOnly`, `Secure`, `SameSite=Strict`.
+- [x] Antiforgery token header required on every unsafe `/api/admin` request, checked by one group filter. Login is the one exception: there is no session yet, and the cookie is SameSite=Strict.
+- [x] One `Admin` role. The admin user is created from configuration (`Admin:Email`, `Admin:Password`) in every environment when missing: user secrets in Development, `.env` in production.
+- [x] Firearm admin endpoints: list (`status`, `q`, sort by `updatedAt` newest first, `missingForPublish` per item), detail, create (creates the base variant in the same transaction), `PUT` core fields, variant CRUD at `/variants/{variantId}`, `POST /variants/{variantId}/make-base`, replace-the-list `PUT`s for tags, designers, manufacturers, relations, adoptions and chamberings, publish, unpublish, delete, unlock.
+- [x] A *derived from* or *copy of* link that would create a cycle is rejected (400 naming the loop).
+- [x] The base variant cannot be deleted; promote another variant first.
+- [x] Tests: 401 when not logged in; 400 without the antiforgery header; validation 400s; 409 on a stale version; locks appended, and unlock; slug redirect written, and the live-slug-wins rules; cycle rejection; make-base; publish requirements; delete rules; happy path from create to publish to visible on the public API.
 
 **3b: other entities and reference data**
 - [ ] Admin endpoints (list, detail, create, `PUT`, publish/unpublish where the entity has a status, delete, unlock) for people, organizations, cartridges, countries, tags and mechanisms.
@@ -385,6 +386,7 @@ Shared rules:
 - [ ] `deploy/docker-compose.prod.yml`: `caddy`, `web`, `api`, `postgres`, one-shot `migrate` (runs EF migrations via an idempotent migration bundle, then `ReferenceDataSeeder`, before `api` starts; **never** migrate on API startup in production), media volume
 - [ ] `deploy/Caddyfile`: automatic TLS; `/api/revalidate` → web; `/api/*` → api; `/media/*` → media volume with long cache headers; everything else → web
 - [ ] GitHub Actions: build + test on PR; on `main`, build images → push to GHCR → SSH to the VPS → `docker compose pull && docker compose up -d`
+- [ ] `UseForwardedHeaders` trusting only Caddy, so the per-IP login rate limit and lockout see real client addresses (otherwise every visitor shares one bucket and anyone can keep the admin locked out)
 - [ ] Secrets via a `.env` on the VPS (never committed); admin credentials, DB password, revalidate secret, YouTube API key, import contact email
 - [ ] Nightly backups: `pg_dump` + media volume to offsite storage (e.g. Backblaze B2); document and test a restore
 

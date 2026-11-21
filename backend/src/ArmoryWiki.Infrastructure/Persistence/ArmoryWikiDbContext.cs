@@ -1,14 +1,19 @@
 using ArmoryWiki.Domain;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArmoryWiki.Infrastructure.Persistence;
 
-public sealed class ArmoryWikiDbContext(DbContextOptions<ArmoryWikiDbContext> options) : DbContext(options)
+public sealed class ArmoryWikiDbContext(DbContextOptions<ArmoryWikiDbContext> options)
+    : IdentityDbContext<IdentityUser>(options)
 {
     /// <summary>Shadow column: weighted tsvector over name, alternative names and summary.</summary>
     public const string SearchVector = "SearchVector";
     /// <summary>Shadow column: lower-cased name + alternative names, trigram-indexed for fuzzy matching.</summary>
     public const string SearchNames = "SearchNames";
+    /// <summary>Shadow property mapped to Postgres's xmin: changes on every update of the row.</summary>
+    public const string Version = "Version";
 
     public DbSet<Firearm> Firearms => Set<Firearm>();
     public DbSet<Variant> Variants => Set<Variant>();
@@ -47,6 +52,15 @@ public sealed class ArmoryWikiDbContext(DbContextOptions<ArmoryWikiDbContext> op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder); // Identity tables
+        // Identity hard-codes "AspNetUsers" etc., which the snake_case convention does not rename.
+        modelBuilder.Entity<IdentityUser>().ToTable("identity_users");
+        modelBuilder.Entity<IdentityRole>().ToTable("identity_roles");
+        modelBuilder.Entity<IdentityUserRole<string>>().ToTable("identity_user_roles");
+        modelBuilder.Entity<IdentityUserClaim<string>>().ToTable("identity_user_claims");
+        modelBuilder.Entity<IdentityUserLogin<string>>().ToTable("identity_user_logins");
+        modelBuilder.Entity<IdentityUserToken<string>>().ToTable("identity_user_tokens");
+        modelBuilder.Entity<IdentityRoleClaim<string>>().ToTable("identity_role_claims");
         modelBuilder.HasPostgresExtension("pg_trgm");
         modelBuilder.Owned<FuzzyDate>();
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ArmoryWikiDbContext).Assembly);

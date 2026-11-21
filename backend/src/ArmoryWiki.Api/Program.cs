@@ -2,6 +2,8 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using ArmoryWiki.Api.Common;
 using ArmoryWiki.Domain;
+using ArmoryWiki.Api.Features.Admin;
+using ArmoryWiki.Api.Features.Admin.Firearms;
 using ArmoryWiki.Api.Features.Cartridges;
 using ArmoryWiki.Api.Features.Firearms;
 using ArmoryWiki.Api.Features.Mechanisms;
@@ -10,6 +12,7 @@ using ArmoryWiki.Api.Features.People;
 using ArmoryWiki.Api.Features.Reference;
 using ArmoryWiki.Infrastructure.Persistence;
 using ArmoryWiki.Infrastructure.Seed;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -24,6 +27,9 @@ builder.Services.AddDbContext<ArmoryWikiDbContext>(o =>
     o.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 });
 builder.Services.AddProblemDetails();
+builder.AddAdminAuth();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+ValidationExtensions.ConfigureValidation();
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi(o => o.AddSchemaTransformer((schema, context, _) =>
 {
@@ -40,6 +46,9 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
@@ -54,6 +63,8 @@ if (app.Environment.IsDevelopment())
     await DevelopmentSeeder.SeedAsync(db);
 }
 
+await AdminAuth.EnsureAdminAccountAsync(app.Services);
+
 // Server-side fetches are cached by Next.js; only endpoints the browser calls directly opt into public caching.
 var api = app.MapGroup("/api").WithCacheControl("no-store");
 api.MapFirearms();
@@ -62,5 +73,9 @@ api.MapOrganizations();
 api.MapCartridges();
 api.MapMechanisms();
 api.MapReference();
+
+api.MapAdminAuth();
+var admin = api.MapGroup("/admin").RequireAuthorization(AdminAuth.Policy).RequireAntiforgeryHeader();
+admin.MapAdminFirearms().MapAdminFirearmParts();
 
 app.Run();

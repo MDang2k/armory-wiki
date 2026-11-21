@@ -12,7 +12,7 @@ public sealed class OpenApiTests(DatabaseFixture fixture)
         var doc = await fixture.GetJsonAsync<JsonObject>("/openapi/v1.json");
         var paths = doc["paths"]!.AsObject();
 
-        Assert.Equal(16, paths.Count);
+        Assert.Equal(16, paths.Count(p => !p.Key.StartsWith("/api/admin", StringComparison.Ordinal)));
         Assert.NotNull(paths["/api/firearms/{slug}"]!["get"]!["responses"]!["404"]);
         Assert.NotNull(paths["/api/firearms/{slug}"]!["get"]!["responses"]!["301"]);
         Assert.NotNull(paths["/api/firearms"]!["get"]!["responses"]!["400"]);

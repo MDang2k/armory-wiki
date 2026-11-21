@@ -42,6 +42,9 @@ public sealed class DatabaseFixture : IAsyncLifetime
         {
             b.UseEnvironment("Development");
             b.UseSetting("ConnectionStrings:ArmoryWiki", connectionString);
+            b.UseSetting("Admin:Email", AdminEmail);
+            b.UseSetting("Admin:Password", AdminPassword);
+            b.UseSetting("RateLimits:LoginPerMinute", "1000"); // every test logs in from the same address
         });
         _ = Factory.Server; // boots the app: migrate + seed
 
@@ -53,6 +56,24 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public HttpClient Client(bool followRedirects = true) =>
         Factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = followRedirects });
+
+    // Test-only credentials for the throwaway database.
+    public const string AdminEmail = "admin@armorywiki.test";
+    public const string AdminPassword = "Test-Admin-Password-1";
+
+    /// <summary>HTTPS (so the Secure cookies flow), no auto-redirects, cookies kept between calls.</summary>
+    public HttpClient HttpsClient() =>
+        Factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
+
+    /// <summary>Logged in as the seeded admin, with the antiforgery header set for writes.</summary>
+    public async Task<HttpClient> AdminClientAsync()
+    {
+        var client = HttpsClient();
+        (await client.PostAsJsonAsync("/api/admin/auth/login", new { email = AdminEmail, password = AdminPassword })).EnsureSuccessStatusCode();
+        var token = (await client.GetFromJsonAsync<JsonElement>("/api/admin/auth/antiforgery")).GetProperty("token").GetString();
+        client.DefaultRequestHeaders.Add("X-XSRF-TOKEN", token);
+        return client;
+    }
 
     public async Task<T> GetJsonAsync<T>(string path)
     {
