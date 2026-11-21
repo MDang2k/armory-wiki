@@ -1,6 +1,6 @@
 namespace ArmoryWiki.Domain;
 
-public sealed class Person : Entity
+public sealed class Person : Entity, ISlugged, IPublishable
 {
     public int Id { get; set; }
     public required string Slug { get; set; }
@@ -16,14 +16,14 @@ public sealed class Person : Entity
 }
 
 /// <summary>Manufacturers, design bureaus, state arsenals.</summary>
-public sealed class Organization : Entity
+public sealed class Organization : Entity, ISlugged, IPublishable
 {
     public int Id { get; set; }
     public required string Slug { get; set; }
     public required string Name { get; set; }
     public int? CountryId { get; set; }
     public Country? Country { get; set; }
-    public OrganizationType Type { get; set; }
+    public OrganizationType? Type { get; set; }
     public FuzzyDate? Founded { get; set; }
     public string? Description { get; set; }
     public string? WikidataId { get; set; }
@@ -31,7 +31,7 @@ public sealed class Organization : Entity
     public List<string> LockedFields { get; set; } = [];
 }
 
-public sealed class Country : Entity
+public sealed class Country : Entity, ISlugged
 {
     public int Id { get; set; }
     public required string Slug { get; set; }
@@ -42,7 +42,7 @@ public sealed class Country : Entity
     public string? WikidataId { get; set; }
 }
 
-public sealed class Cartridge : Entity
+public sealed class Cartridge : Entity, ISlugged, IPublishable
 {
     public int Id { get; set; }
     public required string Slug { get; set; }
@@ -55,7 +55,7 @@ public sealed class Cartridge : Entity
     public decimal? BulletDiameterMm { get; set; }
     public decimal? CaseLengthMm { get; set; }
     public decimal? OverallLengthMm { get; set; }
-    public CartridgeType Type { get; set; }
+    public CartridgeType? Type { get; set; }
     public int? ParentCartridgeId { get; set; }
     public Cartridge? ParentCartridge { get; set; }
     public FuzzyDate? DesignDate { get; set; }
@@ -65,7 +65,7 @@ public sealed class Cartridge : Entity
 }
 
 /// <summary>Tree node, e.g. Gas-operated → Short-stroke piston. <see cref="Path"/> is "/gas-operated/short-stroke-piston/".</summary>
-public sealed class OperatingMechanism : Entity
+public sealed class OperatingMechanism : Entity, ISlugged
 {
     public int Id { get; set; }
     public required string Slug { get; set; }
@@ -78,7 +78,7 @@ public sealed class OperatingMechanism : Entity
 }
 
 /// <summary>Controlled vocabulary replacing a single category (ADR-0005).</summary>
-public sealed class Tag : Entity
+public sealed class Tag : Entity, ISlugged
 {
     public int Id { get; set; }
     public required string Slug { get; set; }

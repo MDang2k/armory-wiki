@@ -43,7 +43,7 @@ public static class AdminFirearmPartsEndpoints
         var slug = input.Slug ?? UniqueVariantSlug(firearm!, input.Name);
         if (firearm!.Variants.Any(v => v.Slug == slug))
         {
-            return FirearmEditing.Conflict("Slug taken", $"This firearm already has a variant '{slug}'.");
+            return AdminProblems.Conflict("Slug taken", $"This firearm already has a variant '{slug}'.");
         }
 
         // Two saves (lock keys need the variant id, which exists only after the first) in one transaction.
@@ -82,7 +82,7 @@ public static class AdminFirearmPartsEndpoints
         var slug = input.Slug ?? variant.Slug;
         if (firearm.Variants.Any(v => v.Slug == slug && v.Id != variantId))
         {
-            return FirearmEditing.Conflict("Slug taken", $"This firearm already has a variant '{slug}'.");
+            return AdminProblems.Conflict("Slug taken", $"This firearm already has a variant '{slug}'.");
         }
 
         if (!Apply(firearm, variant, variant.ToInput(), input with { Slug = slug }))
@@ -110,7 +110,7 @@ public static class AdminFirearmPartsEndpoints
 
         if (variant.IsBaseVariant)
         {
-            return FirearmEditing.Conflict("Base variant", "The base variant cannot be deleted. Make another variant the base first.");
+            return AdminProblems.Conflict("Base variant", "The base variant cannot be deleted. Make another variant the base first.");
         }
 
         db.Variants.Remove(variant);
@@ -174,7 +174,7 @@ public static class AdminFirearmPartsEndpoints
         var cartridges = await db.Cartridges.IgnoreQueryFilters().AsTracking().Where(c => slugs.Contains(c.Slug)).ToDictionaryAsync(c => c.Slug, ct);
         if (slugs.Except(cartridges.Keys).ToList() is { Count: > 0 } unknown)
         {
-            return FirearmEditing.UnknownReference("cartridge", unknown);
+            return AdminProblems.UnknownReference("cartridge", unknown);
         }
 
         var before = variant.Chamberings.Select(c => (c.Cartridge.Slug, c.IsPrimary)).ToHashSet();
@@ -202,7 +202,7 @@ public static class AdminFirearmPartsEndpoints
         var tags = await db.Tags.AsTracking().Where(t => input.Tags.Contains(t.Slug)).ToListAsync(ct);
         if (input.Tags.Except(tags.Select(t => t.Slug)).ToList() is { Count: > 0 } unknown)
         {
-            return FirearmEditing.UnknownReference("tag", unknown);
+            return AdminProblems.UnknownReference("tag", unknown);
         }
 
         if (firearm!.Tags.Select(t => t.Slug).ToHashSet().SetEquals(input.Tags))
@@ -231,19 +231,19 @@ public static class AdminFirearmPartsEndpoints
         var orgs = await db.Organizations.IgnoreQueryFilters().AsTracking().Where(o => orgSlugs.Contains(o.Slug)).ToDictionaryAsync(o => o.Slug, ct);
         if (personSlugs.Except(people.Keys).ToList() is { Count: > 0 } unknownPeople)
         {
-            return FirearmEditing.UnknownReference("person", unknownPeople);
+            return AdminProblems.UnknownReference("person", unknownPeople);
         }
 
         if (orgSlugs.Except(orgs.Keys).ToList() is { Count: > 0 } unknownOrgs)
         {
-            return FirearmEditing.UnknownReference("organization", unknownOrgs);
+            return AdminProblems.UnknownReference("organization", unknownOrgs);
         }
 
         var before = firearm!.Designers.Select(d => (d.Person?.Slug, d.Organization?.Slug, d.Role)).ToHashSet();
         var after = input.Designers.Select(d => (d.Person, d.Organization, d.Role)).ToHashSet();
         if (after.Count != input.Designers.Count)
         {
-            return FirearmEditing.BadRequest("Duplicate designer", "Each designer and role may appear once.");
+            return AdminProblems.BadRequest("Duplicate designer", "Each designer and role may appear once.");
         }
 
         if (before.SetEquals(after))
@@ -275,7 +275,7 @@ public static class AdminFirearmPartsEndpoints
         var orgs = await db.Organizations.IgnoreQueryFilters().AsTracking().Where(o => slugs.Contains(o.Slug)).ToDictionaryAsync(o => o.Slug, ct);
         if (slugs.Except(orgs.Keys).ToList() is { Count: > 0 } unknown)
         {
-            return FirearmEditing.UnknownReference("organization", unknown);
+            return AdminProblems.UnknownReference("organization", unknown);
         }
 
         var before = firearm!.Manufacturers.Select(m => new ManufacturerInput(m.Organization.Slug, FuzzyDateDto.From(m.From), FuzzyDateDto.From(m.To), m.IsLicensed));
@@ -309,13 +309,13 @@ public static class AdminFirearmPartsEndpoints
         var slugs = input.Relations.Select(r => r.Firearm).Distinct().ToList();
         if (slugs.Contains(firearm!.Slug))
         {
-            return FirearmEditing.BadRequest("Self relation", "A firearm cannot be related to itself.");
+            return AdminProblems.BadRequest("Self relation", "A firearm cannot be related to itself.");
         }
 
         var targets = await db.Firearms.IgnoreQueryFilters().AsTracking().Where(f => slugs.Contains(f.Slug)).ToDictionaryAsync(f => f.Slug, ct);
         if (slugs.Except(targets.Keys).ToList() is { Count: > 0 } unknown)
         {
-            return FirearmEditing.UnknownReference("firearm", unknown);
+            return AdminProblems.UnknownReference("firearm", unknown);
         }
 
         var before = firearm.RelationsFrom.Select(r => new RelationInput(r.Type, r.ToFirearm.Slug, r.Note));
@@ -339,7 +339,7 @@ public static class AdminFirearmPartsEndpoints
                 // outside the transaction. Serialize derivation writes, then check against committed edges.
                 await db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({DerivationWriteLock})", ct);
                 return await db.FindDerivationLoopAsync(firearm.Id, parents, ct) is { } loop
-                    ? FirearmEditing.BadRequest("Derivation loop", $"This would make a firearm derive from itself: {loop}.")
+                    ? AdminProblems.BadRequest("Derivation loop", $"This would make a firearm derive from itself: {loop}.")
                     : null;
             });
     }
@@ -360,7 +360,7 @@ public static class AdminFirearmPartsEndpoints
         var countries = await db.Countries.AsTracking().Where(c => slugs.Contains(c.Slug)).ToDictionaryAsync(c => c.Slug, ct);
         if (slugs.Except(countries.Keys).ToList() is { Count: > 0 } unknown)
         {
-            return FirearmEditing.UnknownReference("country", unknown);
+            return AdminProblems.UnknownReference("country", unknown);
         }
 
         var before = firearm!.Adoptions.Select(a => new AdoptionInput(a.Country.Slug, FuzzyDateDto.From(a.From), FuzzyDateDto.From(a.To), a.Note));

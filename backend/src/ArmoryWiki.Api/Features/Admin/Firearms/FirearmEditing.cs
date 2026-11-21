@@ -3,7 +3,6 @@ using ArmoryWiki.Domain;
 using ArmoryWiki.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace ArmoryWiki.Api.Features.Admin.Firearms;
 
@@ -23,30 +22,6 @@ internal static class FirearmEditing
             .Include(f => f.RelationsFrom).ThenInclude(r => r.ToFirearm)
             .Include(f => f.Adoptions).ThenInclude(a => a.Country);
 
-    public static uint VersionOf(this ArmoryWikiDbContext db, Firearm f) =>
-        db.Entry(f).Property<uint>(ArmoryWikiDbContext.Version).CurrentValue;
-
-    // Problems ------------------------------------------------------------------------------------------------
-
-    public static ProblemHttpResult NotFound(int id) =>
-        TypedResults.Problem(statusCode: StatusCodes.Status404NotFound, title: "Firearm not found", detail: $"No firearm has the id {id}.");
-
-    public static ProblemHttpResult VersionConflict(uint? current) =>
-        TypedResults.Problem(
-            statusCode: StatusCodes.Status409Conflict,
-            title: "Version conflict",
-            detail: "The firearm changed since you loaded it. Reload, reapply your change and send the new version.",
-            extensions: new Dictionary<string, object?> { ["currentVersion"] = current });
-
-    public static ProblemHttpResult Conflict(string title, string detail) =>
-        TypedResults.Problem(statusCode: StatusCodes.Status409Conflict, title: title, detail: detail);
-
-    public static ProblemHttpResult BadRequest(string title, string detail) =>
-        TypedResults.Problem(statusCode: StatusCodes.Status400BadRequest, title: title, detail: detail);
-
-    public static ProblemHttpResult UnknownReference(string kind, IEnumerable<string> slugs) =>
-        BadRequest($"Unknown {kind}", $"No {kind} has the slug: {string.Join(", ", slugs)}.");
-
     // Loading and saving -----------------------------------------------------------------------------------------
 
     /// <summary>Loads the firearm for a change, or the 404/409 that stops it.</summary>
@@ -56,11 +31,11 @@ internal static class FirearmEditing
         var firearm = await db.AdminGraph().FirstOrDefaultAsync(f => f.Id == id, ct);
         if (firearm is null)
         {
-            return (null!, NotFound(id)); // callers return the problem before touching the firearm
+            return (null!, AdminProblems.NotFound("Firearm", id)); // callers return the problem before touching the firearm
         }
 
         var current = db.VersionOf(firearm);
-        return current == version ? (firearm, null) : (null!, VersionConflict(current));
+        return current == version ? (firearm, null) : (null!, AdminProblems.VersionConflict(current));
     }
 
     /// <summary>
@@ -70,32 +45,7 @@ internal static class FirearmEditing
     public static Task<ProblemHttpResult?> SaveFirearmAsync(this ArmoryWikiDbContext db, Firearm firearm, CancellationToken ct)
     {
         db.Entry(firearm).Property(f => f.UpdatedAt).IsModified = true;
-        return db.TrySaveAsync(firearm.Id, ct);
-    }
-
-    /// <summary>
-    /// Saves, turning a lost race into 409s instead of 500s: a concurrent change (with the version now current),
-    /// or a unique value (slug, Wikidata id) another firearm took in the meantime.
-    /// </summary>
-    public static async Task<ProblemHttpResult?> TrySaveAsync(this ArmoryWikiDbContext db, int firearmId, CancellationToken ct)
-    {
-        try
-        {
-            await db.SaveChangesAsync(ct);
-            return null;
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            var current = await db.Firearms.IgnoreQueryFilters()
-                .Where(f => f.Id == firearmId)
-                .Select(f => (uint?)EF.Property<uint>(f, ArmoryWikiDbContext.Version))
-                .FirstOrDefaultAsync(ct);
-            return VersionConflict(current);
-        }
-        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } unique)
-        {
-            return Conflict("Already in use", $"Another record already uses this value ({unique.ConstraintName}).");
-        }
+        return db.TrySaveAsync<Firearm>(firearm.Id, ct);
     }
 
     /// <summary>Saves the change, then answers with the freshly loaded firearm (new version included).</summary>
@@ -130,36 +80,8 @@ internal static class FirearmEditing
     public static Task<bool> FirearmSlugTakenAsync(this ArmoryWikiDbContext db, string slug, int? exceptId, CancellationToken ct) =>
         db.Firearms.IgnoreQueryFilters().AnyAsync(f => f.Slug == slug && f.Id != exceptId, ct);
 
-    /// <summary>The name's slug, or the first free "-2", "-3", … variant of it.</summary>
-    public static async Task<string> UniqueFirearmSlugAsync(this ArmoryWikiDbContext db, string name, CancellationToken ct)
-    {
-        var root = Slug.FromName(name) is { Length: > 0 } s ? s : "firearm";
-        var candidate = root;
-        for (var n = 2; Slug.ReservedFirearmSlugs.Contains(candidate) || await db.FirearmSlugTakenAsync(candidate, null, ct); n++)
-        {
-            candidate = $"{root}-{n}";
-        }
-
-        return candidate;
-    }
-
-    /// <summary>A live slug always beats a redirect: taking a slug removes any redirect that used it.</summary>
-    public static async Task ClaimSlugAsync(this ArmoryWikiDbContext db, SluggedEntity type, string slug, CancellationToken ct) =>
-        db.SlugRedirects.RemoveRange(await db.SlugRedirects.Where(r => r.EntityType == type && r.OldSlug == slug).ToListAsync(ct));
-
-    /// <summary>Points the old slug at the entity, so old links answer 301.</summary>
-    public static async Task RecordRenameAsync(this ArmoryWikiDbContext db, SluggedEntity type, string oldSlug, int id, CancellationToken ct)
-    {
-        var existing = await db.SlugRedirects.AsTracking().FirstOrDefaultAsync(r => r.EntityType == type && r.OldSlug == oldSlug, ct);
-        if (existing is null)
-        {
-            db.SlugRedirects.Add(new SlugRedirect { EntityType = type, OldSlug = oldSlug, EntityId = id });
-        }
-        else
-        {
-            existing.EntityId = id;
-        }
-    }
+    public static Task<string> UniqueFirearmSlugAsync(this ArmoryWikiDbContext db, string name, CancellationToken ct) =>
+        db.Firearms.UniqueSlugAsync(name, "firearm", ct, Slug.ReservedFirearmSlugs);
 
     // Derivation loops -------------------------------------------------------------------------------------------
 
@@ -219,9 +141,6 @@ internal static class FirearmEditing
     }
 
     // Mapping ----------------------------------------------------------------------------------------------------
-
-    public static FuzzyDate? ToEntity(this FuzzyDateDto? d) =>
-        d is null ? null : new FuzzyDate { Year = d.Year, Month = d.Month, Day = d.Day, YearTo = d.YearTo, Precision = d.Precision, IsApproximate = d.IsApproximate };
 
     public static FirearmInput ToInput(this Firearm f) => new(
         f.Slug,

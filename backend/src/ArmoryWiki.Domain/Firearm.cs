@@ -1,7 +1,7 @@
 namespace ArmoryWiki.Domain;
 
 /// <summary>A base model, e.g. "AK-47". Specifications live on its variants.</summary>
-public sealed class Firearm : Entity
+public sealed class Firearm : Entity, ISlugged, IPublishable
 {
     public int Id { get; set; }
     public required string Slug { get; set; }

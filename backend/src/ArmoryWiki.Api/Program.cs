@@ -4,6 +4,7 @@ using ArmoryWiki.Api.Common;
 using ArmoryWiki.Domain;
 using ArmoryWiki.Api.Features.Admin;
 using ArmoryWiki.Api.Features.Admin.Firearms;
+using ArmoryWiki.Api.Features.Admin.Resources;
 using ArmoryWiki.Api.Features.Cartridges;
 using ArmoryWiki.Api.Features.Firearms;
 using ArmoryWiki.Api.Features.Mechanisms;
@@ -77,5 +78,6 @@ api.MapReference();
 api.MapAdminAuth();
 var admin = api.MapGroup("/admin").RequireAuthorization(AdminAuth.Policy).RequireAntiforgeryHeader();
 admin.MapAdminFirearms().MapAdminFirearmParts();
+admin.MapAdminResources();
 
 app.Run();

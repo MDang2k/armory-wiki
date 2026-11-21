@@ -18,6 +18,12 @@ public sealed record FuzzyDateDto(int Year, int? Month, int? Day, int? YearTo, D
         d is null ? null : new(d.Year, d.Month, d.Day, d.YearTo, d.Precision, d.IsApproximate);
 }
 
+public static class FuzzyDateDtoExtensions
+{
+    public static FuzzyDate? ToEntity(this FuzzyDateDto? d) =>
+        d is null ? null : new FuzzyDate { Year = d.Year, Month = d.Month, Day = d.Day, YearTo = d.YearTo, Precision = d.Precision, IsApproximate = d.IsApproximate };
+}
+
 public sealed record TagDto(string Slug, string Name, TagGroup Group);
 
 /// <summary>A firearm mentioned on another page (a designer's firearms, a cartridge's firearms, ...).</summary>

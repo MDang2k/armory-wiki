@@ -7,14 +7,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArmoryWiki.Api.Features.Cartridges;
 
-public sealed record CartridgeListItemDto(string Slug, string Name, CartridgeType Type, SlugName? Country, FuzzyDateDto? DesignDate);
+public sealed record CartridgeListItemDto(string Slug, string Name, CartridgeType? Type, SlugName? Country, FuzzyDateDto? DesignDate);
 
 public sealed record CartridgeDetailDto(
     string Slug,
     string Name,
     IReadOnlyList<string> AlternativeNames,
     string? WikidataId,
-    CartridgeType Type,
+    CartridgeType? Type,
     decimal? BulletDiameterMm,
     decimal? CaseLengthMm,
     decimal? OverallLengthMm,

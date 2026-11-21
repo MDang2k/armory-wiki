@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <UserSecretsId>2d4a5d58-0844-4709-b3d2-159250de40ec</UserSecretsId>
+    <!-- AD0001 = "an analyzer crashed". The ASP.NET RouteHandlerAnalyzer throws a NullReferenceException on route
+         handlers mapped inside a generic method (Features/Admin/Resources/AdminResource.MapResource). -->
+    <NoWarn>$(NoWarn);AD0001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

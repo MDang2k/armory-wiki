@@ -115,7 +115,7 @@ A specific ammunition type, such as 7.62×39mm, defined by its case and bullet. 
 _Avoid_: caliber, round, ammo
 
 **Parent cartridge**:
-The cartridge whose case another cartridge was developed from.
+The cartridge whose case another cartridge was developed from. Parent links never loop.
 
 **Primary cartridge**:
 The cartridge a variant is chiefly chambered for, when it accepts more than one.

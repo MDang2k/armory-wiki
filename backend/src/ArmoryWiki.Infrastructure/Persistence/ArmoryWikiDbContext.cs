@@ -1,4 +1,5 @@
 using ArmoryWiki.Domain;
+using ArmoryWiki.Infrastructure.Seed;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,7 @@ public sealed class ArmoryWikiDbContext(DbContextOptions<ArmoryWikiDbContext> op
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<WikidataClassTagMap> WikidataClassTagMaps => Set<WikidataClassTagMap>();
     public DbSet<SlugRedirect> SlugRedirects => Set<SlugRedirect>();
+    public DbSet<ReferenceSeedLogEntry> ReferenceSeedLog => Set<ReferenceSeedLogEntry>();
 
     public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
         options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention();

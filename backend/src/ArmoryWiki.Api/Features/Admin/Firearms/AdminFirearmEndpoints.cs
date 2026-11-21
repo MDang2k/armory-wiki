@@ -56,7 +56,7 @@ public static class AdminFirearmEndpoints
         };
         if (ordered is null)
         {
-            return FirearmEditing.BadRequest("Unknown sort", "sort must be one of: -updatedAt, name.");
+            return AdminProblems.BadRequest("Unknown sort", "sort must be one of: -updatedAt, name.");
         }
 
         var p = Math.Max(1, page ?? 1);
@@ -76,7 +76,7 @@ public static class AdminFirearmEndpoints
     private static async Task<Results<Ok<AdminFirearmDto>, ProblemHttpResult>> Detail(int id, ArmoryWikiDbContext db, CancellationToken ct)
     {
         var firearm = await db.AdminGraph().FirstOrDefaultAsync(f => f.Id == id, ct);
-        return firearm is null ? FirearmEditing.NotFound(id) : TypedResults.Ok(db.ToAdminDto(firearm));
+        return firearm is null ? AdminProblems.NotFound("Firearm", id) : TypedResults.Ok(db.ToAdminDto(firearm));
     }
 
     /// <summary>Creates a draft firearm and its base variant. Every field given is locked, as an admin chose it.</summary>
@@ -91,12 +91,12 @@ public static class AdminFirearmEndpoints
 
         if (input.Slug is { } wanted && await db.FirearmSlugTakenAsync(wanted, null, ct))
         {
-            return FirearmEditing.Conflict("Slug taken", $"Another firearm already uses the slug '{wanted}'.");
+            return AdminProblems.Conflict("Slug taken", $"Another firearm already uses the slug '{wanted}'.");
         }
 
         if (await db.WikidataIdTakenAsync(input.WikidataId, null, ct))
         {
-            return FirearmEditing.Conflict("Wikidata id taken", $"Another firearm already has {input.WikidataId}.");
+            return AdminProblems.Conflict("Wikidata id taken", $"Another firearm already has {input.WikidataId}.");
         }
 
         var firearm = new Firearm
@@ -109,7 +109,7 @@ public static class AdminFirearmEndpoints
         firearm.Variants.Add(new Variant { Slug = firearm.Slug, Name = firearm.Name, IsBaseVariant = true });
         await db.ClaimSlugAsync(SluggedEntity.Firearm, firearm.Slug, ct);
         db.Firearms.Add(firearm);
-        if (await db.TrySaveAsync(0, ct) is { } conflict)
+        if (await db.TrySaveAsync<Firearm>(null, ct) is { } conflict)
         {
             return conflict;
         }
@@ -138,7 +138,7 @@ public static class AdminFirearmEndpoints
         {
             if (await db.FirearmSlugTakenAsync(slug, firearm.Id, ct))
             {
-                return FirearmEditing.Conflict("Slug taken", $"Another firearm already uses the slug '{slug}'.");
+                return AdminProblems.Conflict("Slug taken", $"Another firearm already uses the slug '{slug}'.");
             }
 
             await db.RecordRenameAsync(SluggedEntity.Firearm, firearm.Slug, firearm.Id, ct);
@@ -147,7 +147,7 @@ public static class AdminFirearmEndpoints
 
         if (input.WikidataId != firearm.WikidataId && await db.WikidataIdTakenAsync(input.WikidataId, firearm.Id, ct))
         {
-            return FirearmEditing.Conflict("Wikidata id taken", $"Another firearm already has {input.WikidataId}.");
+            return AdminProblems.Conflict("Wikidata id taken", $"Another firearm already has {input.WikidataId}.");
         }
 
         // Saving an unchanged form must not bump the version (and 409 other editors) or lock anything.
@@ -203,13 +203,13 @@ public static class AdminFirearmEndpoints
 
         if (firearm!.Status == PublishStatus.Published)
         {
-            return FirearmEditing.Conflict("Firearm is published", "Unpublish it before deleting it.");
+            return AdminProblems.Conflict("Firearm is published", "Unpublish it before deleting it.");
         }
 
         db.SlugRedirects.RemoveRange(await db.SlugRedirects.AsTracking()
             .Where(r => r.EntityType == SluggedEntity.Firearm && r.EntityId == id).ToListAsync(ct));
         db.Firearms.Remove(firearm); // variants, credits, relations and adoptions cascade
-        return await db.TrySaveAsync(id, ct) is { } conflict ? conflict : TypedResults.NoContent();
+        return await db.TrySaveAsync<Firearm>(id, ct) is { } conflict ? conflict : TypedResults.NoContent();
     }
 
     /// <summary>Removes a lock without changing the value; the next import may overwrite the field again.</summary>
@@ -243,13 +243,13 @@ public static class AdminFirearmEndpoints
         if (input.Country is { } country
             && (countryId = await db.Countries.Where(c => c.Slug == country).Select(c => (int?)c.Id).FirstOrDefaultAsync(ct)) is null)
         {
-            return new(null, null, FirearmEditing.UnknownReference("country", [country]));
+            return new(null, null, AdminProblems.UnknownReference("country", [country]));
         }
 
         if (input.Mechanism is { } mechanism
             && (mechanismId = await db.OperatingMechanisms.Where(m => m.Slug == mechanism).Select(m => (int?)m.Id).FirstOrDefaultAsync(ct)) is null)
         {
-            return new(null, null, FirearmEditing.UnknownReference("mechanism", [mechanism]));
+            return new(null, null, AdminProblems.UnknownReference("mechanism", [mechanism]));
         }
 
         return new(countryId, mechanismId, null);

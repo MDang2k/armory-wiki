@@ -42,21 +42,25 @@ public sealed class SeedDataTests(DatabaseFixture fixture)
     }
 
     [Fact]
-    public async Task Reference_data_seeding_restores_missing_entries_and_is_idempotent()
+    public async Task Reference_seeding_never_recreates_what_an_admin_removed_but_adds_entries_it_never_seeded()
     {
         await using var db = fixture.NewDbContext();
         await using var tx = await db.Database.BeginTransactionAsync();
         var mechanismCount = await db.OperatingMechanisms.CountAsync();
-        var mapCount = await db.WikidataClassTagMaps.CountAsync();
+
+        // An admin deleted a seeded tag: it stays deleted.
         db.Tags.Remove(await db.Tags.SingleAsync(t => t.Slug == "post-cold-war"));
-        db.WikidataClassTagMaps.Remove(await db.WikidataClassTagMaps.FirstAsync());
+        // A tag the seeder has never handled (as if just added to the code): simulated by forgetting its log entry.
+        db.Tags.Remove(await db.Tags.SingleAsync(t => t.Slug == "personal-defense"));
+        db.ReferenceSeedLog.Remove(await db.ReferenceSeedLog.SingleAsync(e => e.Key == "tag:personal-defense"));
         await db.SaveChangesAsync();
 
         await ReferenceDataSeeder.SeedAsync(db);
-        await ReferenceDataSeeder.SeedAsync(db);
+        await ReferenceDataSeeder.SeedAsync(db); // a second run changes nothing
 
-        Assert.Equal(16, await db.Tags.CountAsync());
+        Assert.False(await db.Tags.AnyAsync(t => t.Slug == "post-cold-war"));
+        Assert.True(await db.Tags.AnyAsync(t => t.Slug == "personal-defense"));
+        Assert.Equal(15, await db.Tags.CountAsync());
         Assert.Equal(mechanismCount, await db.OperatingMechanisms.CountAsync());
-        Assert.Equal(mapCount, await db.WikidataClassTagMaps.CountAsync());
     }
 }

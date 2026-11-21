@@ -6,8 +6,8 @@ namespace ArmoryWiki.Infrastructure.Seed;
 
 /// <summary>
 /// Vocabulary every environment needs: the operating mechanism tree, tags, and the Wikidata class → tag map.
-/// Runs after every migration. It only inserts what is missing (matched by slug / QID), so admin edits survive
-/// and new entries added here appear on the next run.
+/// Runs after every migration. Every entry is seeded at most once (tracked in <c>reference_seed_log</c>): new
+/// entries added here appear on the next run, and entries an admin deleted or renamed stay that way.
 /// </summary>
 public static class ReferenceDataSeeder
 {
@@ -76,10 +76,35 @@ public static class ReferenceDataSeeder
     {
         // Loaded entities are reused as navigation targets, so they must be tracked.
         db.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
-        var mechanisms =await db.OperatingMechanisms.ToDictionaryAsync(m => m.Slug, ct);
-        foreach (var seed in Mechanisms.Where(s => !mechanisms.ContainsKey(s.Slug)))
+        var log = (await db.ReferenceSeedLog.Select(e => e.Key).ToListAsync(ct)).ToHashSet();
+
+        // Each key is handled once, ever: inserted when missing, or just recorded when it already exists
+        // (databases seeded before the log). Keys an admin since deleted or renamed are never re-created.
+        bool FirstTime(string key)
         {
-            var parent = seed.ParentSlug is null ? null : mechanisms[seed.ParentSlug];
+            if (!log.Add(key))
+            {
+                return false;
+            }
+
+            db.ReferenceSeedLog.Add(new ReferenceSeedLogEntry { Key = key, SeededAt = DateTime.UtcNow });
+            return true;
+        }
+
+        var mechanisms = await db.OperatingMechanisms.ToDictionaryAsync(m => m.Slug, ct);
+        foreach (var seed in Mechanisms.Where(s => !log.Contains($"mechanism:{s.Slug}")))
+        {
+            OperatingMechanism? parent = null;
+            if (!mechanisms.ContainsKey(seed.Slug) && seed.ParentSlug is not null && !mechanisms.TryGetValue(seed.ParentSlug, out parent))
+            {
+                continue; // the parent was renamed or removed: leave it unlogged and try again next run
+            }
+
+            if (!FirstTime($"mechanism:{seed.Slug}") || mechanisms.ContainsKey(seed.Slug))
+            {
+                continue;
+            }
+
             var mechanism = new OperatingMechanism
             {
                 Slug = seed.Slug,
@@ -93,7 +118,7 @@ public static class ReferenceDataSeeder
         }
 
         var tags = await db.Tags.ToDictionaryAsync(t => t.Slug, ct);
-        foreach (var (slug, name, group) in Tags.Where(t => !tags.ContainsKey(t.Slug)))
+        foreach (var (slug, name, group) in Tags.Where(t => FirstTime($"tag:{t.Slug}") && !tags.ContainsKey(t.Slug)))
         {
             var tag = new Tag { Slug = slug, Name = name, Group = group };
             db.Tags.Add(tag);
@@ -103,9 +128,12 @@ public static class ReferenceDataSeeder
         var mapped = (await db.WikidataClassTagMaps.Select(m => new { m.Qid, m.Tag.Slug }).ToListAsync(ct))
             .Select(m => (m.Qid, m.Slug))
             .ToHashSet();
-        foreach (var (qid, tagSlug) in ClassTags.Where(c => !mapped.Contains(c)))
+        foreach (var (qid, tagSlug) in ClassTags.Where(c => FirstTime($"class-tag:{c.Qid}:{c.TagSlug}") && !mapped.Contains(c)))
         {
-            db.WikidataClassTagMaps.Add(new WikidataClassTagMap { Qid = qid, Tag = tags[tagSlug] });
+            if (tags.TryGetValue(tagSlug, out var tag))
+            {
+                db.WikidataClassTagMaps.Add(new WikidataClassTagMap { Qid = qid, Tag = tag });
+            }
         }
 
         await db.SaveChangesAsync(ct);

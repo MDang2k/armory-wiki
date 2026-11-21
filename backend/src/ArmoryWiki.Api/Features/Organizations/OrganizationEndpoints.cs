@@ -7,14 +7,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArmoryWiki.Api.Features.Organizations;
 
-public sealed record OrganizationListItemDto(string Slug, string Name, OrganizationType Type, SlugName? Country, FuzzyDateDto? Founded);
+public sealed record OrganizationListItemDto(string Slug, string Name, OrganizationType? Type, SlugName? Country, FuzzyDateDto? Founded);
 
 public sealed record ManufacturedFirearmDto(string Slug, string Name, bool IsLicensed, FuzzyDateDto? From, FuzzyDateDto? To);
 
 public sealed record OrganizationDetailDto(
     string Slug,
     string Name,
-    OrganizationType Type,
+    OrganizationType? Type,
     SlugName? Country,
     FuzzyDateDto? Founded,
     string? Description,

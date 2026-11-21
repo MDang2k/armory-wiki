@@ -129,13 +129,18 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasColumnName("status");
 
                     b.Property<string>("Type")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("type");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("WikidataId")
                         .HasColumnType("text")
@@ -195,6 +200,12 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("WikidataId")
                         .HasColumnType("text")
@@ -546,6 +557,12 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_operating_mechanisms");
 
@@ -606,13 +623,18 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasColumnName("status");
 
                     b.Property<string>("Type")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("type");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("WikidataId")
                         .HasColumnType("text")
@@ -679,6 +701,12 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("WikidataId")
                         .HasColumnType("text")
@@ -760,6 +788,12 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_tags");
@@ -928,6 +962,22 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_wikidata_class_tag_maps_tag_id");
 
                     b.ToTable("wikidata_class_tag_maps", (string)null);
+                });
+
+            modelBuilder.Entity("ArmoryWiki.Infrastructure.Seed.ReferenceSeedLogEntry", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("text")
+                        .HasColumnName("key");
+
+                    b.Property<DateTime>("SeededAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("seeded_at");
+
+                    b.HasKey("Key")
+                        .HasName("pk_reference_seed_log");
+
+                    b.ToTable("reference_seed_log", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>

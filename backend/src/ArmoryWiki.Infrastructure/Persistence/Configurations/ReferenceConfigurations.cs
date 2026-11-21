@@ -1,4 +1,5 @@
 using ArmoryWiki.Domain;
+using ArmoryWiki.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -8,6 +9,7 @@ internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
 {
     public void Configure(EntityTypeBuilder<Person> b)
     {
+        b.Property<uint>(ArmoryWikiDbContext.Version).IsRowVersion();
         b.HasIndex(x => x.Slug).IsUnique();
         b.HasIndex(x => x.WikidataId).IsUnique();
         b.HasQueryFilter(x => x.Status == PublishStatus.Published);
@@ -18,6 +20,7 @@ internal sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organ
 {
     public void Configure(EntityTypeBuilder<Organization> b)
     {
+        b.Property<uint>(ArmoryWikiDbContext.Version).IsRowVersion();
         b.HasIndex(x => x.Slug).IsUnique();
         b.HasIndex(x => x.WikidataId).IsUnique();
         b.HasQueryFilter(x => x.Status == PublishStatus.Published);
@@ -28,6 +31,7 @@ internal sealed class CartridgeConfiguration : IEntityTypeConfiguration<Cartridg
 {
     public void Configure(EntityTypeBuilder<Cartridge> b)
     {
+        b.Property<uint>(ArmoryWikiDbContext.Version).IsRowVersion();
         b.HasIndex(x => x.Slug).IsUnique();
         b.HasIndex(x => x.WikidataId).IsUnique();
         b.HasQueryFilter(x => x.Status == PublishStatus.Published);
@@ -38,6 +42,7 @@ internal sealed class CountryConfiguration : IEntityTypeConfiguration<Country>
 {
     public void Configure(EntityTypeBuilder<Country> b)
     {
+        b.Property<uint>(ArmoryWikiDbContext.Version).IsRowVersion();
         b.HasIndex(x => x.Slug).IsUnique();
         b.HasIndex(x => x.WikidataId).IsUnique();
     }
@@ -47,6 +52,7 @@ internal sealed class OperatingMechanismConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<OperatingMechanism> b)
     {
+        b.Property<uint>(ArmoryWikiDbContext.Version).IsRowVersion();
         b.HasIndex(x => x.Slug).IsUnique();
         // text_pattern_ops lets `path LIKE '/gas-operated/%'` use the index.
         b.HasIndex(x => x.Path).HasOperators("text_pattern_ops");
@@ -56,7 +62,11 @@ internal sealed class OperatingMechanismConfiguration : IEntityTypeConfiguration
 
 internal sealed class TagConfiguration : IEntityTypeConfiguration<Tag>
 {
-    public void Configure(EntityTypeBuilder<Tag> b) => b.HasIndex(x => x.Slug).IsUnique();
+    public void Configure(EntityTypeBuilder<Tag> b)
+    {
+        b.Property<uint>(ArmoryWikiDbContext.Version).IsRowVersion();
+        b.HasIndex(x => x.Slug).IsUnique();
+    }
 }
 
 internal sealed class WikidataClassTagMapConfiguration : IEntityTypeConfiguration<WikidataClassTagMap>
@@ -67,4 +77,13 @@ internal sealed class WikidataClassTagMapConfiguration : IEntityTypeConfiguratio
 internal sealed class SlugRedirectConfiguration : IEntityTypeConfiguration<SlugRedirect>
 {
     public void Configure(EntityTypeBuilder<SlugRedirect> b) => b.HasKey(x => new { x.EntityType, x.OldSlug });
+}
+
+internal sealed class ReferenceSeedLogConfiguration : IEntityTypeConfiguration<ReferenceSeedLogEntry>
+{
+    public void Configure(EntityTypeBuilder<ReferenceSeedLogEntry> b)
+    {
+        b.ToTable("reference_seed_log");
+        b.HasKey(x => x.Key);
+    }
 }

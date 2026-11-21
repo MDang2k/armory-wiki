@@ -310,7 +310,7 @@ Rules shared by every slice:
 - Optimistic concurrency on Postgres `xmin`: every admin DTO has `version`, every `PUT` sends it, and a mismatch answers 409 ProblemDetails carrying the current version.
 - Write handlers load with `AsTracking()` (the API context is no-tracking by default).
 - FluentValidation on every write DTO: slug format `^[a-z0-9]+(-[a-z0-9]+)*$`; firearm slugs `facets` and `compare` are reserved because they are API routes; positive measurements; `FuzzyDate` consistency (Month 1–12, Day valid for the month, `YearTo >= Year`, a Decade starts at a year ending in 0).
-- Slugs are generated from the name when not supplied: lowercase, `×` → `x`, accents removed, Cyrillic transliterated, every other run of non-alphanumerics → `-`, trimmed; collisions get `-2`, `-3`, … A slug change writes a `SlugRedirect` (variants have no public route, so variant renames write none). A live slug always beats a redirect: taking a slug deletes any redirect with that old slug, including renaming back to it.
+- Slugs are generated from the name when not supplied: lowercase, `×` → `x`, accents removed, Cyrillic transliterated, every other run of non-alphanumerics → `-`, trimmed; collisions get `-2`, `-3`, … A slug change writes a `SlugRedirect` for entities with a public page (firearms, people, organizations, cartridges, mechanisms); variants, countries and tags have none, so their renames write none. A live slug always beats a redirect: taking a slug deletes any redirect with that old slug, including renaming back to it.
 - Deleting: firearms and their child rows only while Draft; people, organizations, cartridges, countries, mechanisms and tags only when nothing references them (409 listing the references). Deleting also removes the entity's slug redirects and image files.
 - Creating something locks every field the admin supplied (an admin chose those values); later imports fill only what was left empty.
 - `POST .../publish` enforces the publish requirements from GLOSSARY.md (400 listing what is missing); `POST .../unpublish` returns content to Draft.
@@ -325,10 +325,10 @@ Rules shared by every slice:
 - [x] Tests: 401 when not logged in; 400 without the antiforgery header; validation 400s; 409 on a stale version; locks appended, and unlock; slug redirect written, and the live-slug-wins rules; cycle rejection; make-base; publish requirements; delete rules; happy path from create to publish to visible on the public API.
 
 **3b: other entities and reference data**
-- [ ] Admin endpoints (list, detail, create, `PUT`, publish/unpublish where the entity has a status, delete, unlock) for people, organizations, cartridges, countries, tags and mechanisms.
-- [ ] Moving a mechanism to another parent, or changing its slug, rewrites the `Path` of it and all its descendants in one transaction; a mechanism cannot move beneath itself; only an unused leaf can be deleted.
-- [ ] `reference_seed_log` table: `ReferenceDataSeeder` inserts only keys it has never seeded before, so admin deletions and renames stick.
-- [ ] Tests for each.
+- [x] Admin endpoints (list, detail, create, `PUT`, delete; publish/unpublish and unlock for entities with a status and locks: people, organizations, cartridges) for people, organizations, cartridges, countries, tags and mechanisms. One generic engine with a spec per resource (`Features/Admin/Resources`). A cartridge's parent links never loop.
+- [x] Moving a mechanism to another parent, or changing its slug, rewrites the `Path` of it and all its descendants in one transaction; a mechanism cannot move beneath itself; only an unused leaf can be deleted.
+- [x] `reference_seed_log` table: `ReferenceDataSeeder` inserts only keys it has never seeded before, so admin deletions and renames stick.
+- [x] Tests for each.
 
 **3c: sources and citations**
 - [ ] Source and Citation entities (§3.5) and migration; admin CRUD for sources; citations added and removed per subject at `/api/admin/{firearms|variants|people|organizations|cartridges}/{id}/citations`.
