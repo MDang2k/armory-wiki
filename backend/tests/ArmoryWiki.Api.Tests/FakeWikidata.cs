@@ -8,7 +8,8 @@ namespace ArmoryWiki.Api.Tests;
 
 /// <summary>
 /// Answers Wikidata's SPARQL and wbgetentities endpoints from <c>Fixtures/wikidata-entities.json</c> (real items,
-/// trimmed to the properties the importer reads). No live network.
+/// trimmed to the properties the importer reads), Commons imageinfo from <c>Fixtures/commons-files.json</c>, and
+/// file downloads with generated JPEGs. No live network.
 /// </summary>
 public sealed class FakeWikidata : HttpMessageHandler
 {
@@ -25,6 +26,18 @@ public sealed class FakeWikidata : HttpMessageHandler
     /// <summary>Imitates the API's result-size limit: answers hold at most this many entities.</summary>
     public int MaxEntitiesPerAnswer { get; set; } = int.MaxValue;
 
+    private readonly JsonArray _commonsPages =
+        JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "commons-files.json")))!["query"]!["pages"]!.AsArray();
+
+    /// <summary>Bytes served for a download URL; any other URL gets a small JPEG unique to that URL.</summary>
+    public Dictionary<string, byte[]> Downloads { get; } = [];
+    /// <summary>Download URLs that answer 404.</summary>
+    public HashSet<string> BrokenDownloads { get; } = [];
+
+    /// <summary>A Commons file's imageinfo entry (without "File:"), to adjust before a run.</summary>
+    public JsonObject CommonsFile(string name) =>
+        _commonsPages.Single(p => p!["title"]!.GetValue<string>() == "File:" + name)!["imageinfo"]![0]!.AsObject();
+
     public WikimediaClient Client() => new(new HttpClient(this), (_, _) => Task.CompletedTask);
 
     public JsonObject Entity(string qid) => _entities[qid]!.AsObject();
@@ -32,6 +45,27 @@ public sealed class FakeWikidata : HttpMessageHandler
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Requests.Add(request.RequestUri!.ToString());
+        if (request.RequestUri.Host == "commons.wikimedia.org")
+        {
+            var titles = HttpUtility.ParseQueryString(await request.Content!.ReadAsStringAsync(cancellationToken))["titles"]!.Split('|');
+            var pages = new JsonArray([.. titles.Select(t =>
+                _commonsPages.FirstOrDefault(p => p!["title"]!.GetValue<string>() == t)?.DeepClone()
+                ?? new JsonObject { ["ns"] = 6, ["title"] = t, ["missing"] = true })]);
+            return Json(new JsonObject { ["batchcomplete"] = true, ["query"] = new JsonObject { ["pages"] = pages } });
+        }
+
+        if (request.RequestUri.Host == "upload.wikimedia.org")
+        {
+            var url = request.RequestUri.OriginalString;
+            if (BrokenDownloads.Contains(url))
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+
+            var size = 40 + (Math.Abs(url.GetHashCode(StringComparison.Ordinal)) % 200);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(Downloads.GetValueOrDefault(url) ?? TestImages.Jpeg(size, size / 2)) };
+        }
+
         if (request.RequestUri.Host == "query.wikidata.org")
         {
             Assert.Contains("wdt:P279*", HttpUtility.ParseQueryString(await request.Content!.ReadAsStringAsync(cancellationToken))["query"]);

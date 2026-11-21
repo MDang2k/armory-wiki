@@ -106,7 +106,7 @@ public static class AdminMediaEndpoints
     /// Serializes everything that touches one hash's files (upload, delete, cleanup) until the transaction ends,
     /// so a delete never removes files an upload of the same bytes is about to use.
     /// </summary>
-    private static Task LockHashAsync(ArmoryWikiDbContext db, string hash, CancellationToken ct) =>
+    internal static Task LockHashAsync(ArmoryWikiDbContext db, string hash, CancellationToken ct) =>
         db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({hash}, 0))", ct);
 
     // Images ---------------------------------------------------------------------------------------------------

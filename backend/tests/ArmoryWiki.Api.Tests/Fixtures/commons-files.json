@@ -1,0 +1,121 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "ns": 6,
+    "title": "File:АК-47.jpg",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 66905,
+      "width": 1024,
+      "height": 302,
+      "thumburl": "https://upload.wikimedia.org/wikipedia/commons/3/32/%D0%90%D0%9A-47.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+      "thumbwidth": 2560,
+      "thumbheight": 755,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/32/%D0%90%D0%9A-47.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:%D0%90%D0%9A-47.jpg",
+      "extmetadata": {
+       "Credit": {
+        "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Allatur&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Allatur (page does not exist)\">Allatur</a>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 3.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "License": {
+        "value": "cc-by-sa-3.0",
+        "source": "commons-templates",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   {
+    "ns": 6,
+    "title": "File:M1 Garand rifle - USA - 30-06 - Armémuseum.jpg",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 687315,
+      "width": 2350,
+      "height": 1100,
+      "thumburl": "https://upload.wikimedia.org/wikipedia/commons/9/9e/M1_Garand_rifle_-_USA_-_30-06_-_Arm%C3%A9museum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+      "thumbwidth": 2560,
+      "thumbheight": 1198,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/9e/M1_Garand_rifle_-_USA_-_30-06_-_Arm%C3%A9museum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:M1_Garand_rifle_-_USA_-_30-06_-_Arm%C3%A9museum.jpg",
+      "extmetadata": {
+       "Credit": {
+        "value": "Armémuseum (The Swedish Army Museum) through the Digital Museum (<a rel=\"nofollow\" class=\"external free\" href=\"http://www.digitaltmuseum.se\">http://www.digitaltmuseum.se</a>).",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "Armémuseum (The Swedish Army Museum)",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "Public domain",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "License": {
+        "value": "pd",
+        "source": "commons-templates",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   },
+   {
+    "ns": 6,
+    "title": "File:Mannlicher M1895 from the Swedish Army Museum.jpg",
+    "imagerepository": "local",
+    "imageinfo": [
+     {
+      "size": 203022,
+      "width": 1200,
+      "height": 414,
+      "thumburl": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Mannlicher_M1895_from_the_Swedish_Army_Museum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+      "thumbwidth": 2560,
+      "thumbheight": 883,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Mannlicher_M1895_from_the_Swedish_Army_Museum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Mannlicher_M1895_from_the_Swedish_Army_Museum.jpg",
+      "extmetadata": {
+       "Credit": {
+        "value": "<a rel=\"nofollow\" class=\"external free\" href=\"http://digitaltmuseum.se/011024390830\">http://digitaltmuseum.se/011024390830</a>",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "Armémuseum (The Swedish Army Museum)",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 3.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "License": {
+        "value": "cc-by-sa-3.0",
+        "source": "commons-templates",
+        "hidden": ""
+       }
+      },
+      "mime": "image/jpeg"
+     }
+    ]
+   }
+  ]
+ }
+}

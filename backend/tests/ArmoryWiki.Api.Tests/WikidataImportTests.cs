@@ -19,7 +19,8 @@ public sealed class WikidataImportTests(DatabaseFixture fixture)
     private async Task<ImportReport> ImportAsync(DbContextOptions<ArmoryWikiDbContext> options, bool dryRun = false)
     {
         await using var db = new ArmoryWikiDbContext(options);
-        return (await ImportCommands.RunAsync(db, _wikidata.Client(), WikidataImporter.Command, dryRun, CancellationToken.None))!;
+        var client = _wikidata.Client();
+        return (await ImportCommands.RunAsync(db, WikidataImporter.Command, dryRun, r => new WikidataImporter(db, client, r).RunAsync(CancellationToken.None), CancellationToken.None))!;
     }
 
     [Fact]
@@ -211,7 +212,7 @@ public sealed class WikidataImportTests(DatabaseFixture fixture)
         await holder.Database.ExecuteSqlAsync($"SELECT pg_advisory_lock(hashtext({WikidataImporter.Command}))");
 
         await using var db = new ArmoryWikiDbContext(options);
-        Assert.Null(await ImportCommands.RunAsync(db, _wikidata.Client(), WikidataImporter.Command, dryRun: false, CancellationToken.None));
+        Assert.Null(await ImportCommands.RunAsync(db, WikidataImporter.Command, dryRun: false, _ => throw new InvalidOperationException("must not run"), CancellationToken.None));
         Assert.Empty(_wikidata.Requests);
     }
 

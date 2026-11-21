@@ -8542,6 +8542,21 @@
       "type": "statement",
       "rank": "normal"
      }
+    ],
+    "P18": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P18",
+       "datavalue": {
+        "value": "АК-47.jpg",
+        "type": "string"
+       },
+       "datatype": "commonsMedia"
+      },
+      "type": "statement",
+      "rank": "normal"
+     }
     ]
    },
    "sitelinks": {
@@ -8703,6 +8718,21 @@
         "type": "wikibase-entityid"
        },
        "datatype": "wikibase-item"
+      },
+      "type": "statement",
+      "rank": "normal"
+     }
+    ],
+    "P18": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P18",
+       "datavalue": {
+        "value": "M1 Garand rifle - USA - 30-06 - Armémuseum.jpg",
+        "type": "string"
+       },
+       "datatype": "commonsMedia"
       },
       "type": "statement",
       "rank": "normal"
@@ -9001,6 +9031,21 @@
         "type": "wikibase-entityid"
        },
        "datatype": "wikibase-item"
+      },
+      "type": "statement",
+      "rank": "normal"
+     }
+    ],
+    "P18": [
+     {
+      "mainsnak": {
+       "snaktype": "value",
+       "property": "P18",
+       "datavalue": {
+        "value": "Mannlicher M1895 from the Swedish Army Museum.jpg",
+        "type": "string"
+       },
+       "datatype": "commonsMedia"
       },
       "type": "statement",
       "rank": "normal"

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using ArmoryWiki.Infrastructure.Media;
 
 namespace ArmoryWiki.Api.Import;
 
@@ -10,7 +11,11 @@ namespace ArmoryWiki.Api.Import;
 public sealed class WikimediaClient(HttpClient http, Func<TimeSpan, CancellationToken, Task>? delay = null)
 {
     public const string DefaultContact = "https://github.com/MDang2k/armory-wiki";
+    /// <summary>Width of the Commons rendition the importer downloads; smaller originals come back unscaled.</summary>
+    public const int CommonsWidth = 2560;
     private const int MaxAttempts = 6;
+    /// <summary>Bounds a whole request, body included: HttpClient.Timeout stops at the headers when streaming.</summary>
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromMinutes(2);
     private readonly Func<TimeSpan, CancellationToken, Task> _delay = delay ?? Task.Delay;
 
     public static HttpClient CreateHttpClient(string contact, HttpMessageHandler? handler = null)
@@ -24,7 +29,7 @@ public sealed class WikimediaClient(HttpClient http, Func<TimeSpan, Cancellation
     /// <summary>QIDs a SPARQL query selects in its first variable.</summary>
     public async Task<List<string>> SparqlQidsAsync(string query, CancellationToken ct)
     {
-        using var doc = await SendAsync(
+        using var doc = await GetJsonAsync(
             () => new HttpRequestMessage(HttpMethod.Post, "https://query.wikidata.org/sparql")
             {
                 Content = new FormUrlEncodedContent([new("query", query), new("format", "json")]),
@@ -46,7 +51,7 @@ public sealed class WikimediaClient(HttpClient http, Func<TimeSpan, Cancellation
             var url = "https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&maxlag=5"
                 + "&props=labels%7Caliases%7Cclaims%7Csitelinks&languages=en%7Cmul&sitefilter=enwiki&ids="
                 + string.Join("%7C", batch);
-            using var doc = await SendAsync(() => new HttpRequestMessage(HttpMethod.Get, url), ct);
+            using var doc = await GetJsonAsync(() => new HttpRequestMessage(HttpMethod.Get, url), ct);
             foreach (var (qid, entity) in WikidataEntity.ParseResponse(doc.RootElement))
             {
                 result[qid] = entity;
@@ -69,20 +74,104 @@ public sealed class WikimediaClient(HttpClient http, Func<TimeSpan, Cancellation
         return result;
     }
 
-    private async Task<JsonDocument> SendAsync(Func<HttpRequestMessage> request, CancellationToken ct)
+    /// <summary>
+    /// Commons file metadata (license, author, a <see cref="CommonsWidth"/>-wide rendition) in batches of 50,
+    /// keyed by the file name as asked for (without "File:"). Missing files are null.
+    /// </summary>
+    public async Task<Dictionary<string, CommonsFile?>> GetCommonsFilesAsync(IEnumerable<string> fileNames, CancellationToken ct)
+    {
+        var result = new Dictionary<string, CommonsFile?>();
+        var pending = new Queue<string[]>(fileNames.Distinct().Chunk(50));
+        while (pending.TryDequeue(out var batch))
+        {
+            using var doc = await GetJsonAsync(
+                () => new HttpRequestMessage(HttpMethod.Post, "https://commons.wikimedia.org/w/api.php")
+                {
+                    // POST: fifty titles do not fit a URL.
+                    Content = new FormUrlEncodedContent([
+                        new("action", "query"), new("format", "json"), new("formatversion", "2"), new("maxlag", "5"), new("redirects", "1"),
+                        new("prop", "imageinfo"), new("iiprop", "url|size|mime|extmetadata"),
+                        new("iiurlwidth", CommonsWidth.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        new("iiextmetadatafilter", "License|LicenseShortName|Artist"),
+                        new("titles", string.Join("|", batch.Select(n => "File:" + n))),
+                    ]),
+                },
+                ct);
+            foreach (var (name, file) in CommonsFile.ParseResponse(doc.RootElement))
+            {
+                result[name] = file;
+            }
+
+            // A batch cut short by the result-size limit leaves pages out: ask again for those, in halves.
+            var missing = batch.Where(n => !result.ContainsKey(n)).ToArray();
+            if (missing.Length == 1 && batch.Length == 1)
+            {
+                throw new InvalidOperationException($"Commons answered without File:{missing[0]}.");
+            }
+
+            foreach (var half in missing.Chunk(Math.Max(1, (missing.Length + 1) / 2)))
+            {
+                pending.Enqueue(half);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Downloads a file, refusing anything larger than the image processor accepts. Failures of this one file
+    /// (status, timeout, broken connection) surface as <see cref="HttpRequestException"/>.
+    /// </summary>
+    public async Task<byte[]> DownloadAsync(string url, CancellationToken ct)
+    {
+        using var deadline = Deadline(ct);
+        try
+        {
+            return await DownloadWithinAsync(url, deadline.Token);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new HttpRequestException($"Timed out after {RequestTimeout.TotalMinutes:0} minutes.");
+        }
+        catch (IOException e)
+        {
+            throw new HttpRequestException($"Connection failed: {e.Message}", e);
+        }
+    }
+
+    private async Task<byte[]> DownloadWithinAsync(string url, CancellationToken ct)
+    {
+        using var response = await SendAsync(() => new HttpRequestMessage(HttpMethod.Get, url), ct);
+        if (response.Content.Headers.ContentLength > ImageProcessor.MaxBytes)
+        {
+            throw new InvalidImageException($"Larger than {ImageProcessor.MaxBytes / (1024 * 1024)} MB.");
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await stream.ReadAsync(chunk, ct)) > 0)
+        {
+            if (buffer.Length + read > ImageProcessor.MaxBytes)
+            {
+                throw new InvalidImageException($"Larger than {ImageProcessor.MaxBytes / (1024 * 1024)} MB.");
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
+        return buffer.ToArray();
+    }
+
+    private async Task<JsonDocument> GetJsonAsync(Func<HttpRequestMessage> request, CancellationToken ct)
     {
         for (var attempt = 1; ; attempt++)
         {
-            using var response = await http.SendAsync(request(), ct);
+            using var deadline = Deadline(ct);
+            using var response = await SendAsync(request, deadline.Token);
             var retryAfter = response.Headers.RetryAfter?.Delta;
-            if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable)
-            {
-                await BackOffAsync(attempt, retryAfter, $"HTTP {(int)response.StatusCode}", ct);
-                continue;
-            }
-
-            response.EnsureSuccessStatusCode();
-            var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(deadline.Token), cancellationToken: deadline.Token);
             // maxlag: the API answers 200 with an error object when its replicas lag behind.
             if (doc.RootElement.TryGetProperty("error", out var error))
             {
@@ -94,11 +183,42 @@ public sealed class WikimediaClient(HttpClient http, Func<TimeSpan, Cancellation
                     continue;
                 }
 
-                throw new InvalidOperationException($"Wikidata API error: {code}");
+                throw new InvalidOperationException($"Wikimedia API error: {code}");
             }
 
             return doc;
         }
+    }
+
+    /// <summary>Sends, waiting and retrying on 429/503; any other failure status throws.</summary>
+    private async Task<HttpResponseMessage> SendAsync(Func<HttpRequestMessage> request, CancellationToken ct)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            var response = await http.SendAsync(request(), HttpCompletionOption.ResponseHeadersRead, ct);
+            if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable)
+            {
+                var retryAfter = response.Headers.RetryAfter?.Delta;
+                response.Dispose();
+                await BackOffAsync(attempt, retryAfter, $"HTTP {(int)response.StatusCode}", ct);
+                continue;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                response.Dispose();
+                throw new HttpRequestException($"HTTP {(int)response.StatusCode} from {response.RequestMessage?.RequestUri?.Host}.", null, response.StatusCode);
+            }
+
+            return response;
+        }
+    }
+
+    private static CancellationTokenSource Deadline(CancellationToken ct)
+    {
+        var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(RequestTimeout);
+        return deadline;
     }
 
     private Task BackOffAsync(int attempt, TimeSpan? retryAfter, string reason, CancellationToken ct) =>

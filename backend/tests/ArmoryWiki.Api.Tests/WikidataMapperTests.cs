@@ -154,7 +154,7 @@ public sealed class WikidataMapperTests
         var result = await client.GetEntitiesAsync(["Q6"], CancellationToken.None);
 
         Assert.Null(result["Q6"]);
-        Assert.Equal([TimeSpan.FromSeconds(7), TimeSpan.FromSeconds(10)], waits);
+        Assert.Equal([TimeSpan.FromSeconds(7), TimeSpan.FromSeconds(5)], waits);
         Assert.Equal("ArmoryWiki-importer/1.0 (https://github.com/MDang2k/armory-wiki)", http.DefaultRequestHeaders.UserAgent.ToString());
     }
 

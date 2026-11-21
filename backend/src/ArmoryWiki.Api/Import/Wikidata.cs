@@ -11,7 +11,7 @@ public static class Wd
         Manufacturer = "P176", CountryOfOrigin = "P495", Ammunition = "P739", BasedOn = "P144", Length = "P2043",
         Mass = "P2067", MuzzleVelocity = "P4137", RateOfFire = "P3792", EffectiveRange = "P4176",
         BirthDate = "P569", DeathDate = "P570", Citizenship = "P27", Country = "P17", Dissolved = "P576",
-        AppliesToPart = "P518", SourcingCircumstances = "P1480";
+        AppliesToPart = "P518", SourcingCircumstances = "P1480", Image = "P18";
 
     public const string Human = "Q5", GunBarrel = "Q487192", Circa = "Q5727902";
     /// <summary>The proleptic Julian calendar model of Wikidata time values.</summary>
@@ -82,6 +82,10 @@ public sealed class WikidataEntity
     public IReadOnlyList<string> Items(string property) =>
         [.. Values(property).Where(v => v.Value.ValueKind == JsonValueKind.Object && v.Value.TryGetProperty("id", out _))
             .Select(v => v.Value.GetProperty("id").GetString()!)];
+
+    /// <summary>String values of a property (Commons file names for <see cref="Wd.Image"/>), in Wikidata's order.</summary>
+    public IReadOnlyList<string> Strings(string property) =>
+        [.. Values(property).Where(v => v.Value.ValueKind == JsonValueKind.String).Select(v => v.Value.GetString()!)];
 
     /// <summary>How many truthy values the property has.</summary>
     public int Count(string property) => Values(property).Count();

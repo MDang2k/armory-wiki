@@ -33,7 +33,11 @@ public sealed class ImportReport(string command, bool dryRun)
     public string Summary()
     {
         var text = new StringBuilder($"{Command}{(DryRun ? " (dry run, nothing saved)" : "")}\n");
-        text.AppendLine($"  {"discovered",-16} {Discovered}");
+        if (Discovered > 0)
+        {
+            text.AppendLine($"  {"discovered",-16} {Discovered}");
+        }
+
         foreach (var (kind, outcomes) in Counts)
         {
             text.AppendLine($"  {kind,-16} {string.Join(", ", outcomes.Select(o => $"{o.Value} {o.Key}"))}");
