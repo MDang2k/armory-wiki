@@ -17,6 +17,7 @@ cd backend && dotnet test                               # needs Docker running (
 cd backend && dotnet ef migrations add <Name> -p src/ArmoryWiki.Infrastructure -s src/ArmoryWiki.Api -o Persistence/Migrations
 cd backend && dotnet run --project src/ArmoryWiki.Api -- import-wikidata --dry-run   # live Wikidata; report in import-reports/
 cd backend && dotnet run --project src/ArmoryWiki.Api -- import-commons --dry-run    # images for firearms without one
+cd backend && dotnet run --project src/ArmoryWiki.Api -- import-wikipedia --dry-run  # prose for firearms with a WikipediaTitle
 cd frontend && npm run dev                              # http://localhost:3000
 cd frontend && npm run lint && npm run build
 ```

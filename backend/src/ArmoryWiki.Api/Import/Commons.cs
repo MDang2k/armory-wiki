@@ -22,8 +22,7 @@ public sealed record CommonsFile(
     public static Dictionary<string, CommonsFile?> ParseResponse(JsonElement root)
     {
         var query = root.GetProperty("query");
-        var normalizedFrom = Reverse(query, "normalized");
-        var redirectedFrom = Reverse(query, "redirects");
+        var asked = new AskedTitles(query);
 
         var result = new Dictionary<string, CommonsFile?>();
         foreach (var page in query.GetProperty("pages").EnumerateArray())
@@ -47,32 +46,13 @@ public sealed record CommonsFile(
                 continue;
             }
 
-            foreach (var redirect in (List<string>)[title, .. redirectedFrom.GetValueOrDefault(title) ?? []])
+            foreach (var name in asked.For(title))
             {
-                foreach (var asked in normalizedFrom.GetValueOrDefault(redirect) ?? [redirect])
-                {
-                    result[StripPrefix(asked)] = file;
-                }
+                result[StripPrefix(name)] = file;
             }
         }
 
         return result;
-    }
-
-    /// <summary>"to" → every "from" of the API's normalized or redirects list.</summary>
-    private static Dictionary<string, List<string>> Reverse(JsonElement query, string list)
-    {
-        var from = new Dictionary<string, List<string>>();
-        if (query.TryGetProperty(list, out var entries))
-        {
-            foreach (var e in entries.EnumerateArray())
-            {
-                var to = e.GetProperty("to").GetString()!;
-                (from.TryGetValue(to, out var names) ? names : from[to] = []).Add(e.GetProperty("from").GetString()!);
-            }
-        }
-
-        return from;
     }
 
     private static string StripPrefix(string title) => title.StartsWith("File:", StringComparison.Ordinal) ? title[5..] : title;

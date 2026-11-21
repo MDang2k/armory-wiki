@@ -223,7 +223,7 @@ public sealed class WikidataImporter(ArmoryWikiDbContext db, WikimediaClient wik
             await db.ClaimSlugAsync(SluggedEntity.Person, person.Slug, ct);
         }
 
-        var f = new Fields(person, isNew);
+        var f = new ImportFields(person, isNew);
         f.Set("fullName", person.FullName, item.Label, v => person.FullName = v);
         f.SetDate("birthDate", person.BirthDate, item.Date(Wd.BirthDate), v => person.BirthDate = v);
         f.SetDate("deathDate", person.DeathDate, item.Date(Wd.DeathDate), v => person.DeathDate = v);
@@ -246,7 +246,7 @@ public sealed class WikidataImporter(ArmoryWikiDbContext db, WikimediaClient wik
             await db.ClaimSlugAsync(SluggedEntity.Organization, organization.Slug, ct);
         }
 
-        var f = new Fields(organization, isNew);
+        var f = new ImportFields(organization, isNew);
         f.Set("name", organization.Name, item.Label, v => organization.Name = v);
         f.SetDate("founded", organization.Founded, item.Date(Wd.Inception), v => organization.Founded = v);
         f.Set("country", organization.CountryId, CountryId(item.SingleItem(Wd.Country)), v => organization.CountryId = v);
@@ -268,7 +268,7 @@ public sealed class WikidataImporter(ArmoryWikiDbContext db, WikimediaClient wik
             await db.ClaimSlugAsync(SluggedEntity.Cartridge, cartridge.Slug, ct);
         }
 
-        var f = new Fields(cartridge, isNew);
+        var f = new ImportFields(cartridge, isNew);
         f.Set("name", cartridge.Name, item.Label, v => cartridge.Name = v);
         f.AddNames("alternativeNames", cartridge.AlternativeNames, item.Aliases);
         f.SetDate("designDate", cartridge.DesignDate, item.Date(Wd.Inception), v => cartridge.DesignDate = v);
@@ -305,7 +305,7 @@ public sealed class WikidataImporter(ArmoryWikiDbContext db, WikimediaClient wik
             }
 
             var cartridge = await db.Cartridges.IgnoreQueryFilters().SingleAsync(c => c.Id == id, ct);
-            new Fields(cartridge, isNew: false).Set("parent", cartridge.ParentCartridgeId, parentId, v => cartridge.ParentCartridgeId = v);
+            new ImportFields(cartridge, isNew: false).Set("parent", cartridge.ParentCartridgeId, parentId, v => cartridge.ParentCartridgeId = v);
             if (await SaveAsync("cartridge parent", parentQid, isNew: false, ct))
             {
                 parentOf[id] = cartridge.ParentCartridgeId;
@@ -333,7 +333,7 @@ public sealed class WikidataImporter(ArmoryWikiDbContext db, WikimediaClient wik
             await db.ClaimSlugAsync(SluggedEntity.Firearm, firearm.Slug, ct);
         }
 
-        var f = new Fields(firearm, isNew);
+        var f = new ImportFields(firearm, isNew);
         f.Set("name", firearm.Name, facts.Name, v => firearm.Name = v);
         f.AddNames("alternativeNames", firearm.AlternativeNames, facts.AlternativeNames);
         f.Set("country", firearm.CountryOfOriginId, CountryId(facts.CountryQid), v => firearm.CountryOfOriginId = v);
@@ -404,7 +404,7 @@ public sealed class WikidataImporter(ArmoryWikiDbContext db, WikimediaClient wik
         }
     }
 
-    private void WriteSpecs(Fields f, Variant v, FirearmFacts facts)
+    private void WriteSpecs(ImportFields f, Variant v, FirearmFacts facts)
     {
         var key = $"variants/{v.Id}/";
         f.Set(key + "overallLengthMm", v.OverallLengthMm, facts.OverallLengthMm, x => v.OverallLengthMm = x);
@@ -457,7 +457,7 @@ public sealed class WikidataImporter(ArmoryWikiDbContext db, WikimediaClient wik
         {
             await db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({AdminFirearmPartsEndpoints.DerivationWriteLock})", ct);
             var firearm = await db.Firearms.IgnoreQueryFilters().Include(f => f.RelationsFrom).SingleAsync(f => f.Id == id, ct);
-            var f = new Fields(firearm, isNew: false);
+            var f = new ImportFields(firearm, isNew: false);
             var added = parents.Where(p => !firearm.RelationsFrom.Any(r => r.ToFirearmId == p)).ToList();
             if (added.Count == 0 || !f.CanAddTo("relations", firearm.RelationsFrom.Count))
             {
@@ -554,51 +554,5 @@ public sealed class WikidataImporter(ArmoryWikiDbContext db, WikimediaClient wik
         {
             db.ChangeTracker.Clear();
         }
-    }
-
-    /// <summary>The import rules for one entity (GLOSSARY.md: *import*, *locked field*).</summary>
-    private sealed class Fields(IPublishable target, bool isNew)
-    {
-        private bool CanWrite(string key, bool empty) =>
-            isNew || (!target.LockedFields.Contains(key) && (target.Status == PublishStatus.Draft || empty));
-
-        /// <summary>Lists are locked as a whole; on published content they are only filled when empty.</summary>
-        public bool CanAddTo(string key, int count) => CanWrite(key, count == 0);
-
-        public void Set<T>(string key, T current, T value, Action<T> assign)
-        {
-            // ponytail: a value removed on Wikidata stays here; drafts are refreshed, never emptied.
-            if (value is null || EqualityComparer<T>.Default.Equals(current, value) || !CanWrite(key, current is null))
-            {
-                return;
-            }
-
-            assign(value);
-        }
-
-        public void Set(string key, string? current, string? value, Action<string> assign) =>
-            Set<string?>(key, current, value, v => assign(v!)); // Set<T> never assigns null
-
-        public void SetDate(string key, FuzzyDate? current, FuzzyDate? value, Action<FuzzyDate> assign)
-        {
-            if (value is not null && !Same(current, value) && CanWrite(key, current is null))
-            {
-                assign(value);
-            }
-        }
-
-        public void AddNames(string key, List<string> current, IEnumerable<string> names)
-        {
-            if (!CanAddTo(key, current.Count))
-            {
-                return;
-            }
-
-            current.AddRange(names.Where(n => !current.Contains(n, StringComparer.OrdinalIgnoreCase)).ToList());
-        }
-
-        private static bool Same(FuzzyDate? a, FuzzyDate b) =>
-            a is not null && a.Year == b.Year && a.Month == b.Month && a.Day == b.Day && a.YearTo == b.YearTo
-            && a.Precision == b.Precision && a.IsApproximate == b.IsApproximate;
     }
 }

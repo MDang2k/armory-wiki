@@ -383,10 +383,10 @@ Rules shared by every importer:
 - [x] Tests: license allow/deny mapping and attribution stripping from fixtures; re-run adds nothing; refused licenses, missing files and undecodable files are skipped and leave no files behind; a dry run writes nothing. Live: 18 images for the 15 seeded firearms, a second run unchanged; a dry run after the full Wikidata import would add 1,474 images.
 
 **4c: `import-wikipedia`**
-- [ ] For firearms with a `WikipediaTitle`: fetch article HTML via the Wikipedia REST API and convert it with our own small converter (paragraphs, headings, lists, links, bold, italic; everything else, including tables, infoboxes, references, images and templates, is dropped).
-- [ ] Lead section → `Summary`; History / Development / Design → `DevelopmentHistory`; Service / Usage / Combat / Users → `ServiceHistory`; "See also" and the rest dropped. Store `WikipediaRevisionId` for CC BY-SA attribution.
-- [ ] Draft/published and lock rules as above. Firearms only for now.
-- [ ] Tests: converter and section mapping from saved article HTML.
+- [x] For firearms with a `WikipediaTitle`: look up the latest revisions in batches of 50 (action API, redirects followed) and download only articles whose revision differs from `WikipediaRevisionId` and where the import may still write something; fetch the Parsoid HTML via the core REST API (`/w/rest.php/v1/page/{title}/with_html`) and convert it with our own small converter: a tokenizer plus paragraphs, headings, lists, links (to en.wikipedia.org), bold and italic, Markdown-escaped. Tables, infoboxes, references, images, hatnotes and other boxes are dropped, except multi-column list boxes (`div-col`), which hold the users lists. Headings with nothing under them are dropped.
+- [x] The lead's first paragraph → `Summary` as plain text, cut at a sentence to its 500-character column; sections whose heading mentions History / Development / Design / Background / Origins → `DevelopmentHistory`, and Service / Operational / Combat / Usage / Users / Deployment (checked first, so "Service history" is service) → `ServiceHistory`, each under its own `##` heading; "See also", Variants, Civilian use and the rest dropped. `WikipediaRevisionId` records the revision read, for CC BY-SA attribution; an admin who locks it keeps the firearm out of the import.
+- [x] Draft/published and lock rules as above. Firearms only for now.
+- [x] Tests: converter and section mapping from saved article HTML (M1 Garand, trimmed); locks, a pinned revision, missing articles; a second run downloads nothing. Live: 40 articles in 33 s, a second run unchanged in 3 s.
 
 **4d: `import-fw-videos`**
 - [ ] List the Forgotten Weapons channel uploads via the YouTube Data API (`YouTube:ApiKey` from configuration; the command stops with a clear message when it is missing).

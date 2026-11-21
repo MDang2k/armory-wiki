@@ -38,6 +38,17 @@ public sealed class FakeWikidata : HttpMessageHandler
     public JsonObject CommonsFile(string name) =>
         _commonsPages.Single(p => p!["title"]!.GetValue<string>() == "File:" + name)!["imageinfo"]![0]!.AsObject();
 
+    /// <summary>English Wikipedia articles by title: latest revision and Parsoid HTML (M1 Garand from the fixture).</summary>
+    public Dictionary<string, (long RevisionId, string Html)> Articles { get; } = new()
+    {
+        ["M1 Garand"] = (1386668058, File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "wikipedia-m1-garand.html"))),
+    };
+
+    /// <summary>Articles whose revision lookup works but whose HTML answers 404.</summary>
+    public HashSet<string> BrokenArticles { get; } = [];
+    /// <summary>Titles the revision lookup leaves out of its pages (interwiki or special titles).</summary>
+    public HashSet<string> UnlistedTitles { get; } = [];
+
     public WikimediaClient Client() => new(new HttpClient(this), (_, _) => Task.CompletedTask);
 
     public JsonObject Entity(string qid) => _entities[qid]!.AsObject();
@@ -52,6 +63,24 @@ public sealed class FakeWikidata : HttpMessageHandler
                 _commonsPages.FirstOrDefault(p => p!["title"]!.GetValue<string>() == t)?.DeepClone()
                 ?? new JsonObject { ["ns"] = 6, ["title"] = t, ["missing"] = true })]);
             return Json(new JsonObject { ["batchcomplete"] = true, ["query"] = new JsonObject { ["pages"] = pages } });
+        }
+
+        if (request.RequestUri.Host == "en.wikipedia.org" && request.RequestUri.AbsolutePath == "/w/api.php")
+        {
+            var titles = HttpUtility.ParseQueryString(await request.Content!.ReadAsStringAsync(cancellationToken))["titles"]!.Split('|');
+            var pages = new JsonArray([.. titles.Where(t => !UnlistedTitles.Contains(t)).Select(t => (JsonNode)(Articles.TryGetValue(t, out var a)
+                ? new JsonObject { ["title"] = t, ["revisions"] = new JsonArray(new JsonObject { ["revid"] = a.RevisionId }) }
+                : new JsonObject { ["title"] = t, ["missing"] = true }))]);
+            return Json(new JsonObject { ["batchcomplete"] = true, ["query"] = new JsonObject { ["pages"] = pages } });
+        }
+
+        if (request.RequestUri.Host == "en.wikipedia.org")
+        {
+            // /w/rest.php/v1/page/{title}/with_html
+            var title = Uri.UnescapeDataString(request.RequestUri.AbsolutePath.Split('/')[^2]).Replace('_', ' ');
+            return !BrokenArticles.Contains(title) && Articles.TryGetValue(title, out var article)
+                ? Json(new JsonObject { ["title"] = title, ["latest"] = new JsonObject { ["id"] = article.RevisionId }, ["html"] = article.Html })
+                : new HttpResponseMessage(HttpStatusCode.NotFound);
         }
 
         if (request.RequestUri.Host == "upload.wikimedia.org")

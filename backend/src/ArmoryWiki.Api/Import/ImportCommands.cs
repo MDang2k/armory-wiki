@@ -9,7 +9,7 @@ namespace ArmoryWiki.Api.Import;
 /// </summary>
 public static class ImportCommands
 {
-    public static bool IsImportCommand(string[] args) => args is [WikidataImporter.Command or CommonsImporter.Command, ..];
+    public static bool IsImportCommand(string[] args) => args is [WikidataImporter.Command or CommonsImporter.Command or WikipediaImporter.Command, ..];
 
     public static async Task<int> RunAsync(string[] args, IServiceProvider services, CancellationToken ct = default)
     {
@@ -25,7 +25,8 @@ public static class ImportCommands
         var report = await RunAsync(db, command, dryRun, r => command switch
         {
             WikidataImporter.Command => new WikidataImporter(db, client, r).RunAsync(ct),
-            _ => new CommonsImporter(db, client, store, r, dryRun).RunAsync(ct),
+            CommonsImporter.Command => new CommonsImporter(db, client, store, r, dryRun).RunAsync(ct),
+            _ => new WikipediaImporter(db, client, r).RunAsync(ct),
         }, ct);
         if (report is null)
         {
