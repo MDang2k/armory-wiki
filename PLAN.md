@@ -389,10 +389,10 @@ Rules shared by every importer:
 - [x] Tests: converter and section mapping from saved article HTML (M1 Garand, trimmed); locks, a pinned revision, missing articles; a second run downloads nothing. Live: 40 articles in 33 s, a second run unchanged in 3 s.
 
 **4d: `import-fw-videos`**
-- [ ] List the Forgotten Weapons channel uploads via the YouTube Data API (`YouTube:ApiKey` from configuration; the command stops with a clear message when it is missing).
-- [ ] Match each title against firearm names and alternative names with `word_similarity` ≥ 0.6, at most 3 firearms per video; write `Video` rows as `Suggested`, storing title, channel and published date only (no descriptions, no copied text, no scraping of forgottenweapons.com).
-- [ ] Idempotent on (firearm, YouTube video ID) including **rejected** rows, so a rejected suggestion never returns.
-- [ ] Tests: matching against fixtures; a rejected video is not re-suggested.
+- [x] List the Forgotten Weapons channel uploads via the YouTube Data API (`channels?forHandle=@ForgottenWeapons` → uploads playlist → `playlistItems`, 50 per page, about 60 quota units of 10,000 a day; `YouTube:ApiKey` from configuration, never logged; the command stops with a clear message when it is missing; 429/500/503 are retried). Private and deleted uploads are skipped; the publish date is the video's, in UTC.
+- [x] Match each title against firearm names and alternative names (drafts included; only names that identify one firearm: at least three letters or digits, not a tag name such as "Carbine", and held by no other firearm) with `word_similarity` ≥ 0.6, keeping only matches within 0.25 of the best one (so an "AR-10" title does not also suggest the AR-15), at most 3 firearms per video; write `Video` rows as `Suggested`, storing title, channel and published date only (no descriptions, no copied text, no scraping of forgottenweapons.com).
+- [x] Idempotent on (firearm, YouTube video ID) including **rejected** rows, so a rejected suggestion never returns.
+- [x] Tests: matching against fixture uploads (two pages, a private video, an unmatched title, a near-miss name); a rejected video is not re-suggested; a dry run writes nothing; no key stops the command. Not run live yet: it needs a YouTube Data API key.
 
 **Done when** (checked after 4a; met: a live run on a fresh database created 2,215 firearms and matched 14 of the 15 seeded ones by QID, and a second run reported everything unchanged): a dry run reports sensible counts; a real run against a fresh DB imports firearms without duplicating seeded ones; a second run changes nothing; tests are green. 4b–4d each end with their tests green and a dry run reporting sensible counts.
 

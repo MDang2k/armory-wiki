@@ -14,7 +14,7 @@ Early development, built phase by phase from [PLAN.md](PLAN.md).
 | 1 | Domain model, database, development seed | Done |
 | 2 | Read API | Done |
 | 3 | Admin API, sources and media | Done |
-| 4 | Importers (Wikidata, Commons, Wikipedia, Forgotten Weapons videos) | In progress |
+| 4 | Importers (Wikidata, Commons, Wikipedia, Forgotten Weapons videos) | Done (the video import awaits a YouTube API key for its first live run) |
 | 5 | Frontend, read-only | |
 | 6 | Deploy | |
 | 7 | Admin UI | |

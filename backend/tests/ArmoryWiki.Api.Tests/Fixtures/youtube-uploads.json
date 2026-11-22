@@ -1,0 +1,84 @@
+{
+  "channel": {
+    "kind": "youtube#channelListResponse",
+    "items": [
+      {
+        "kind": "youtube#channel",
+        "id": "UCtestchannel000000000000",
+        "contentDetails": { "relatedPlaylists": { "likes": "", "uploads": "UUtestchannel000000000000" } }
+      }
+    ]
+  },
+  "pages": {
+    "": {
+      "kind": "youtube#playlistItemListResponse",
+      "nextPageToken": "PAGE2",
+      "items": [
+        {
+          "snippet": {
+            "publishedAt": "2024-03-02T15:00:01Z",
+            "channelTitle": "Forgotten Weapons",
+            "title": "The AK-47: Kalashnikov's Rifle in Detail",
+            "resourceId": { "kind": "youtube#video", "videoId": "vidAK47aaaa" },
+            "videoOwnerChannelTitle": "Forgotten Weapons"
+          },
+          "contentDetails": { "videoId": "vidAK47aaaa", "videoPublishedAt": "2024-03-01T15:00:00Z" }
+        },
+        {
+          "snippet": {
+            "publishedAt": "2023-11-10T15:00:00Z",
+            "channelTitle": "Forgotten Weapons",
+            "title": "M1 Garand vs Karabiner 98k: Two Rifles of 1944",
+            "resourceId": { "kind": "youtube#video", "videoId": "vidGarand98" },
+            "videoOwnerChannelTitle": "Forgotten Weapons"
+          },
+          "contentDetails": { "videoId": "vidGarand98", "videoPublishedAt": "2023-11-10T15:00:00Z" }
+        },
+        {
+          "snippet": {
+            "publishedAt": "2023-10-01T15:00:00Z",
+            "channelTitle": "Forgotten Weapons",
+            "title": "Private video",
+            "resourceId": { "kind": "youtube#video", "videoId": "vidPrivate1" }
+          },
+          "contentDetails": { "videoId": "vidPrivate1" }
+        }
+      ]
+    },
+    "PAGE2": {
+      "kind": "youtube#playlistItemListResponse",
+      "items": [
+        {
+          "snippet": {
+            "publishedAt": "2023-06-05T15:00:00Z",
+            "channelTitle": "Forgotten Weapons",
+            "title": "A Pinfire Revolver from Belgium",
+            "resourceId": { "kind": "youtube#video", "videoId": "vidPinfire1" },
+            "videoOwnerChannelTitle": "Forgotten Weapons"
+          },
+          "contentDetails": { "videoId": "vidPinfire1", "videoPublishedAt": "2023-06-05T15:00:00Z" }
+        },
+        {
+          "snippet": {
+            "publishedAt": "2023-02-20T15:00:00Z",
+            "channelTitle": "Forgotten Weapons",
+            "title": "AR-10 at the Dutch Trials",
+            "resourceId": { "kind": "youtube#video", "videoId": "vidAR10dutc" },
+            "videoOwnerChannelTitle": "Forgotten Weapons"
+          },
+          "contentDetails": { "videoId": "vidAR10dutc", "videoPublishedAt": "2023-02-20T15:00:00Z" }
+        },
+        {
+          "snippet": {
+            "publishedAt": "2022-09-12T15:00:00Z",
+            "channelTitle": "Forgotten Weapons",
+            "title": "The AK-74: Kalashnikov's Small-Caliber Carbine",
+            "resourceId": { "kind": "youtube#video", "videoId": "vidAK74smal" },
+            "videoOwnerChannelTitle": "Forgotten Weapons"
+          },
+          "contentDetails": { "videoId": "vidAK74smal", "videoPublishedAt": "2022-09-12T15:00:00Z" }
+        }
+      ]
+    }
+  }
+}

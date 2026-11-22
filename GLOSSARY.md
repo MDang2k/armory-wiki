@@ -139,7 +139,7 @@ The terms an image may be used under. Only public domain, CC0, CC BY and CC BY-S
 _Avoid_: copyright, rights
 
 **Video**:
-An embedded YouTube video about a firearm. Videos found automatically start as **suggested** and become **approved** or **rejected** by an admin; only approved videos are shown.
+An embedded YouTube video about a firearm. Videos found automatically start as **suggested** and become **approved** or **rejected** by an admin; only approved videos are shown. A rejected suggestion is never suggested again; a deleted one may be.
 _Avoid_: video reference, clip
 
 ## Editing and publishing

@@ -9,7 +9,8 @@ namespace ArmoryWiki.Api.Import;
 /// </summary>
 public static class ImportCommands
 {
-    public static bool IsImportCommand(string[] args) => args is [WikidataImporter.Command or CommonsImporter.Command or WikipediaImporter.Command, ..];
+    public static bool IsImportCommand(string[] args) =>
+        args is [WikidataImporter.Command or CommonsImporter.Command or WikipediaImporter.Command or ForgottenWeaponsImporter.Command, ..];
 
     public static async Task<int> RunAsync(string[] args, IServiceProvider services, CancellationToken ct = default)
     {
@@ -18,6 +19,15 @@ public static class ImportCommands
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ArmoryWikiDbContext>();
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        var youTubeKey = configuration["YouTube:ApiKey"];
+        if (command == ForgottenWeaponsImporter.Command && string.IsNullOrWhiteSpace(youTubeKey))
+        {
+            await Console.Error.WriteLineAsync(
+                "YouTube:ApiKey is not configured. Create a YouTube Data API v3 key in a Google Cloud project, then "
+                + "`dotnet user-secrets set YouTube:ApiKey <key> --project src/ArmoryWiki.Api` (or YouTube__ApiKey in .env).");
+            return 1;
+        }
+
         using var http = WikimediaClient.CreateHttpClient(configuration["Import:Contact"] ?? WikimediaClient.DefaultContact);
         var client = new WikimediaClient(http);
         var store = scope.ServiceProvider.GetRequiredService<FileStore>();
@@ -26,7 +36,8 @@ public static class ImportCommands
         {
             WikidataImporter.Command => new WikidataImporter(db, client, r).RunAsync(ct),
             CommonsImporter.Command => new CommonsImporter(db, client, store, r, dryRun).RunAsync(ct),
-            _ => new WikipediaImporter(db, client, r).RunAsync(ct),
+            WikipediaImporter.Command => new WikipediaImporter(db, client, r).RunAsync(ct),
+            _ => new ForgottenWeaponsImporter(db, new YouTubeClient(http, youTubeKey!), r).RunAsync(ct),
         }, ct);
         if (report is null)
         {

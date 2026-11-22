@@ -18,6 +18,8 @@ cd backend && dotnet ef migrations add <Name> -p src/ArmoryWiki.Infrastructure -
 cd backend && dotnet run --project src/ArmoryWiki.Api -- import-wikidata --dry-run   # live Wikidata; report in import-reports/
 cd backend && dotnet run --project src/ArmoryWiki.Api -- import-commons --dry-run    # images for firearms without one
 cd backend && dotnet run --project src/ArmoryWiki.Api -- import-wikipedia --dry-run  # prose for firearms with a WikipediaTitle
+cd backend && dotnet user-secrets set YouTube:ApiKey "<YouTube Data API v3 key>" --project src/ArmoryWiki.Api   # once, for import-fw-videos
+cd backend && dotnet run --project src/ArmoryWiki.Api -- import-fw-videos --dry-run  # suggested Forgotten Weapons videos
 cd frontend && npm run dev                              # http://localhost:3000
 cd frontend && npm run lint && npm run build
 ```

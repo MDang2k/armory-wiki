@@ -49,6 +49,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
             b.UseSetting("Admin:Password", AdminPassword);
             b.UseSetting("RateLimits:LoginPerMinute", "1000"); // every test logs in from the same address
             b.UseSetting("Media:Root", MediaRoot);
+            b.UseSetting("YouTube:ApiKey", ""); // never a real key from user secrets: no live network in tests
         });
         _ = Factory.Server; // boots the app: migrate + seed
 
