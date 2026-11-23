@@ -414,8 +414,8 @@ Built in four slices (5a–5d), each tested, reviewed and committed on its own. 
 - [x] `/api/revalidate` route handler (secret from env, compared in constant time; 401/400 otherwise) and the API side: an EF interceptor records the tags of each successful save, the admin group sends them after the request (a failed write sends nothing), and import runs send `all` (§5)
 
 **5b: firearms list and home**
-- [ ] `/firearms`: multi-select filter sidebar driven by `/facets`, URL-synced state, debounced text search, pagination; filter ⇄ query-string helpers with Vitest
-- [ ] `/`: search box, firearm count, browse by type tag, era and country
+- [x] `/firearms`: multi-select filter sidebar driven by `/facets` (type, role and era tags, country, mechanism; design decade is single-choice because the API takes one year range), URL-synced state, debounced text search, sort, pagination, removable filter chips (designer, manufacturer and cartridge filters arrive by link from other pages); filter ⇄ query-string helpers with Vitest. Options are plain links, so filtering works without JavaScript; only the search box is a client component. Small screens show results first, then the filters
+- [x] `/`: search box, firearm count, browse by type tag, era, role and country. Data parts render per request (`connection()` inside Suspense) from cached loaders, so `next build` never calls the API. Checked end to end: an admin rename through the API shows on the home page at the next request
 
 **5c: firearm detail**
 - [ ] Infobox and specs per variant with a variant switcher; designers, cartridges, mechanism; development and service history via `react-markdown` (no raw HTML); adoptions; related firearms; image gallery with author and license under each image; approved videos (click to load); citations as footnotes; Wikipedia attribution linking the exact revision (helper with Vitest); "Compare" link
