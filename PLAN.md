@@ -248,7 +248,7 @@ Write endpoints come in Phase 3 (admin).
 
 - Detail pages: Next 16 **Cache Components** (`cacheComponents: true` in `next.config.ts`). Data loaders are `"use cache"` functions with `cacheLife('hours')` and `cacheTag(...)`, plus `generateMetadata` for title/description/OpenGraph. **No `generateStaticParams`:** pages render per request from cached data, awaiting `params` inside `<Suspense>` so the shell prerenders, and `next build` never needs the API. `/firearms` renders its results on the server from `searchParams` inside `<Suspense>`, through a loader keyed by the normalized filters (cached for minutes); client components only rewrite the URL.
 - **Cache tags:** every loader tags the entity it shows (`firearm:<slug>`, `person:<slug>`, …), each entity type it embeds (`firearms`, `people`, `organizations`, `cartridges`, `mechanisms`, `reference`) and `all`. Route segment configs like `export const revalidate` are not allowed with Cache Components; read `node_modules/next/dist/docs/01-app/02-guides/migrating-to-cache-components.md` before Phase 5.
-- **On-demand revalidation:** a secret-protected route `POST /api/revalidate` (Next route handler; Caddy routes it to Next, not the API) takes a list of tags and expires them at once (`revalidateTag(tag, { expire: 0 })`: the next visit sees the edit, never stale content). The API calls it after every admin write commits (the entity's tag and its type tag, plus the old slug's tag on a rename) and once at the end of each import run (`all`). URL and secret come from configuration; unset means no call; a failed call is logged and never fails the write.
+- **On-demand revalidation:** a secret-protected route `POST /api/revalidate` (Next route handler; the API calls it inside the Docker network at `http://web:3000/api/revalidate`, and Caddy does not route it publicly) takes a list of tags and expires them at once (`revalidateTag(tag, { expire: 0 })`: the next visit sees the edit, never stale content). The API calls it after every admin write commits (the entity's tag and its type tag, plus the old slug's tag on a rename) and once at the end of each import run (`all`). URL and secret come from configuration; unset means no call; a failed call is logged and never fails the write.
 - **Units:** every measurement shows both systems, metric first: "870 mm (34.3 in)", "4.3 kg (9.5 lb)". No toggle, so no client state and no flash after hydration.
 - **Images:** plain `<img>` with the stored WebP sizes (thumb 320, medium 1280), width/height set, lazy-loaded; no `next/image` optimizer.
 - **Videos:** click to load: a title card with a play button; the `youtube-nocookie.com` iframe is created only on click, so nothing reaches YouTube before that.
@@ -430,13 +430,28 @@ Tests: Vitest for `lib/` logic only (units, dates, filter query strings, attribu
 **Done when** (met: a crawler starting at `/` reached all 59 published seeded entities with no error or not-found links, and the sitemap lists them; the admin-edit check passed in 5b): every seeded entity is reachable by clicking from the home page, filters round-trip via URL, an admin edit shows on the page after revalidation without waiting for the hour, `npm run build` and `npm run lint` pass, and Vitest is green.
 
 ### Phase 6: Deploy
-- [ ] Dockerfiles for API and frontend (multi-stage, non-root)
-- [ ] `deploy/docker-compose.prod.yml`: `caddy`, `web`, `api`, `postgres`, one-shot `migrate` (runs EF migrations via an idempotent migration bundle, then `ReferenceDataSeeder`, before `api` starts; **never** migrate on API startup in production), media volume
-- [ ] `deploy/Caddyfile`: automatic TLS; `/api/revalidate` → web; `/api/*` → api; `/media/*` → media volume with long cache headers; everything else → web
-- [ ] GitHub Actions: build + test on PR; on `main`, build images → push to GHCR → SSH to the VPS → `docker compose pull && docker compose up -d`
-- [ ] `UseForwardedHeaders` trusting only Caddy, so the per-IP login rate limit and lockout see real client addresses (otherwise every visitor shares one bucket and anyone can keep the admin locked out)
-- [ ] Secrets via a `.env` on the VPS (never committed); admin credentials, DB password, revalidate secret (same value in the API and the frontend), YouTube API key; plus `SITE_URL` for the frontend (it refuses to start without it) (the import contact is the public project URL, not a secret)
-- [ ] Nightly backups: `pg_dump` + media volume to offsite storage (e.g. Backblaze B2); document and test a restore
+Built in three slices (6a–6c), each tested, reviewed and committed on its own. Everything is built and proven locally first (Caddy with its own local certificate on `localhost`); going live is the last step, once the VPS and domain exist (a Hetzner CX22, Ubuntu 24.04, is plenty).
+
+**6a: images and the production stack**
+- [ ] Dockerfiles, multi-stage and non-root: the API on the ASP.NET runtime image (Debian, so SkiaSharp's Linux assets work), listening on 8080; the frontend as Next `output: "standalone"` on `node:22-slim` with `API_BASE_URL=http://api:8080`
+- [ ] A `migrate` CLI subcommand of the API (EF migrations, then `ReferenceDataSeeder`), run as a one-shot `docker compose run --rm api migrate` before `up`; **never** migrate on API startup in production. Imports run the same way (`docker compose run --rm api import-wikidata`), with reports in a mounted `import-reports/` folder
+- [ ] `deploy/docker-compose.prod.yml`: `caddy`, `web`, `api`, `postgres` (no published ports), media and Postgres volumes, health checks, a fixed network subnet
+- [ ] `deploy/Caddyfile`: automatic TLS; `/api/*` → api (so `/api/revalidate` is not public: the API calls `http://web:3000/api/revalidate` inside the network); `/media/*` → the media volume with long, immutable cache headers (files are named by content hash); everything else → web. Only Caddy publishes ports (80, 443)
+- [ ] `UseForwardedHeaders` trusting only the compose subnet (`KnownNetworks`), so the per-IP login rate limit and lockout see real client addresses (otherwise every visitor shares one bucket and anyone can keep the admin locked out)
+- [ ] `/healthz` on the API for container health checks
+- [ ] Secrets via a `.env` on the VPS (never committed): admin credentials, DB password, revalidate secret (same value in the API and the frontend), YouTube API key, `SITE_URL` (the frontend refuses to start without it). The import contact is the public project URL, not a secret
+- [ ] Checked locally: the whole stack up through Caddy on `https://localhost`, migrate, browse, an admin edit revalidating the page, an import run
+
+**6b: CI/CD**
+- [ ] GitHub Actions: build and test (backend with Docker for Testcontainers; frontend lint, Vitest, build) on pull requests and `main`
+- [ ] On `main`: build both images and push them to GHCR as **public** packages (the server pulls without credentials; CI pushes with `GITHUB_TOKEN`), then SSH to the VPS: copy `docker-compose.prod.yml` and `Caddyfile` to `/opt/armorywiki` (the repo is not cloned there), `pull`, `run --rm api migrate`, `up -d`. SSH key, host and user are Actions secrets. A few seconds of downtime per deploy is accepted; no staging environment
+
+**6c: backups**
+- [ ] Nightly `restic` (encrypted, deduplicated) from a systemd timer on the VPS: a fresh `pg_dump` plus the media volume to Backblaze B2; retention 7 daily, 4 weekly, 6 monthly
+- [ ] A documented restore script that brings a snapshot back into a scratch database and media folder; running it is part of "Done when"
+- [ ] `deploy/README.md`: server setup checklist (`ufw` allowing 22/80/443 only, key-only SSH, no root login, `unattended-upgrades`, Docker), first deploy, imports, backups and restore. No Ansible or Terraform; uptime monitoring (e.g. UptimeRobot's free tier) optional
+
+Next's data cache stays in the frontend container's memory: a deploy or restart starts it cold, which the API absorbs easily at this traffic. No Redis.
 
 **Done when:** the site is live on its domain over HTTPS, a push to `main` deploys automatically, and a backup has been restored into a scratch DB successfully.
 
