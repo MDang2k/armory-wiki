@@ -27,11 +27,16 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("ArmoryWiki")
     ?? throw new InvalidOperationException("Connection string 'ArmoryWiki' is not configured. See CLAUDE.md.");
 // Reads dominate, and projecting owned FuzzyDates needs no-tracking. Write paths opt in with AsTracking().
-builder.Services.AddDbContext<ArmoryWikiDbContext>(o =>
+builder.Services.AddDbContext<ArmoryWikiDbContext>((services, o) =>
 {
     ArmoryWikiDbContext.Configure(o, connectionString);
     o.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+    o.AddInterceptors(services.GetRequiredService<RevalidationInterceptor>());
 });
+// Frontend cache tags made stale by saved changes (PLAN.md §5).
+builder.Services.AddScoped<PendingRevalidation>();
+builder.Services.AddScoped<RevalidationInterceptor>();
+builder.Services.AddHttpClient<FrontendRevalidator>(c => c.Timeout = TimeSpan.FromSeconds(5));
 // Image files: a Docker volume in production (Media:Root), relative paths resolved against the API project.
 var mediaRoot = Path.GetFullPath(
     builder.Configuration["Media:Root"] ?? throw new InvalidOperationException("Media:Root is not configured."),
@@ -42,7 +47,12 @@ builder.Services.AddProblemDetails();
 builder.AddAdminAuth();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 ValidationExtensions.ConfigureValidation();
-builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.ConfigureHttpJsonOptions(o =>
+{
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    // Web defaults also read numbers from strings, which types every integer as "number | string" in OpenAPI.
+    o.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+});
 builder.Services.AddOpenApi(o => o.AddSchemaTransformer((schema, context, _) =>
 {
     // [Flags] enums get no value list by default; the API sends FiringModes as a list of single values.
@@ -99,7 +109,7 @@ api.MapMechanisms();
 api.MapReference();
 
 api.MapAdminAuth();
-var admin = api.MapGroup("/admin").RequireAuthorization(AdminAuth.Policy).RequireAntiforgeryHeader();
+var admin = api.MapGroup("/admin").RequireAuthorization(AdminAuth.Policy).RequireAntiforgeryHeader().RevalidatesFrontend();
 admin.MapAdminFirearms().MapAdminFirearmParts();
 admin.MapAdminResources();
 admin.MapAdminSources();

@@ -32,13 +32,29 @@ public static class ImportCommands
         var client = new WikimediaClient(http);
         var store = scope.ServiceProvider.GetRequiredService<FileStore>();
 
-        var report = await RunAsync(db, command, dryRun, r => command switch
+        ImportReport? report = null;
+        var failed = true;
+        try
         {
-            WikidataImporter.Command => new WikidataImporter(db, client, r).RunAsync(ct),
-            CommonsImporter.Command => new CommonsImporter(db, client, store, r, dryRun).RunAsync(ct),
-            WikipediaImporter.Command => new WikipediaImporter(db, client, r).RunAsync(ct),
-            _ => new ForgottenWeaponsImporter(db, new YouTubeClient(http, youTubeKey!), r).RunAsync(ct),
-        }, ct);
+            report = await RunAsync(db, command, dryRun, r => command switch
+            {
+                WikidataImporter.Command => new WikidataImporter(db, client, r).RunAsync(ct),
+                CommonsImporter.Command => new CommonsImporter(db, client, store, r, dryRun).RunAsync(ct),
+                WikipediaImporter.Command => new WikipediaImporter(db, client, r).RunAsync(ct),
+                _ => new ForgottenWeaponsImporter(db, new YouTubeClient(http, youTubeKey!), r).RunAsync(ct),
+            }, ct);
+            failed = false;
+        }
+        finally
+        {
+            // Imports touch too many pages to name: expire everything once at the end of the run, also when it
+            // failed partway (what it saved so far is live). Not when another run held the lock: nothing was saved.
+            if (!dryRun && (failed || report is not null))
+            {
+                await scope.ServiceProvider.GetRequiredService<Common.FrontendRevalidator>().SendAsync(["all"], CancellationToken.None);
+            }
+        }
+
         if (report is null)
         {
             await Console.Error.WriteLineAsync($"{command} is already running.");

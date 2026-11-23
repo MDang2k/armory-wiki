@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
+/* Dense, encyclopedic, close to Wikipedia (PLAN.md §5): system fonts, light and dark following the OS. */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #202122;
+  --muted: #54595d;
+  --border: #c8ccd1;
+  --surface: #f8f9fa;
+  --link: #3366cc;
+  --link-visited: #6b4ba1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #101418;
+    --foreground: #eaecf0;
+    --muted: #a2a9b1;
+    --border: #3a3f44;
+    --surface: #1b1f23;
+    --link: #88a3e8;
+    --link-visited: #a799cd;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-surface: var(--surface);
+  --color-link: var(--link);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Linux Libertine", Georgia, "Times New Roman", serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+a {
+  color: var(--link);
+}
+
+a:visited {
+  color: var(--link-visited);
+}
+
+a:hover {
+  text-decoration: underline;
 }

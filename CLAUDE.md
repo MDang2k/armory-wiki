@@ -20,7 +20,12 @@ cd backend && dotnet run --project src/ArmoryWiki.Api -- import-commons --dry-ru
 cd backend && dotnet run --project src/ArmoryWiki.Api -- import-wikipedia --dry-run  # prose for firearms with a WikipediaTitle
 cd backend && dotnet user-secrets set YouTube:ApiKey "<YouTube Data API v3 key>" --project src/ArmoryWiki.Api   # once, for import-fw-videos
 cd backend && dotnet run --project src/ArmoryWiki.Api -- import-fw-videos --dry-run  # suggested Forgotten Weapons videos
-cd frontend && npm run dev                              # http://localhost:3000
+cp frontend/.env.example frontend/.env.local            # once; set REVALIDATE_SECRET
+cd backend && dotnet user-secrets set Frontend:RevalidateUrl http://localhost:3000/api/revalidate --project src/ArmoryWiki.Api   # once
+cd backend && dotnet user-secrets set Frontend:RevalidateSecret "<same as REVALIDATE_SECRET>" --project src/ArmoryWiki.Api      # once
+cd frontend && npm run dev                              # http://localhost:3000 (proxies /api and /media to the API)
+cd frontend && npm run gen:api                          # after API changes, with the API running: regenerates src/lib/api/schema.d.ts
+cd frontend && npm test                                 # Vitest (src/lib)
 cd frontend && npm run lint && npm run build
 ```
 
@@ -60,7 +65,8 @@ Backend:
 
 Frontend:
 - Server Components by default; `"use client"` only where interactivity is needed.
-- No `any`. API types come only from the generated OpenAPI schema.
+- No `any`. API types come only from the generated OpenAPI schema (`Dto<"FirearmDetailDto">`); call the API through `src/lib/api/client.ts` from cached loaders that return `Loaded<T>`, and settle it in the page (`settle()`: 404 or permanent redirect).
+- Every cached loader tags the entity it shows (`firearm:<slug>`), each entity type it embeds (`firearms`, `people`, `organizations`, `cartridges`, `mechanisms`, `reference`) and `all`; the API expires those after admin writes.
 - Never read cookies or headers in public pages (keeps them static).
 
 Content:

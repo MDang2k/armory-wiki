@@ -5,6 +5,8 @@ using ArmoryWiki.Domain;
 using ArmoryWiki.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -29,6 +31,11 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public WebApplicationFactory<Program> Factory { get; private set; } = null!;
 
+    public const string RevalidateSecret = "test-revalidate-secret";
+
+    /// <summary>Every revalidation request the API sent to the frontend.</summary>
+    public RecordingRevalidations Revalidations { get; } = new();
+
     /// <summary>A throwaway folder for uploaded image files, removed after the run.</summary>
     public string MediaRoot { get; } = Path.Combine(Path.GetTempPath(), "armorywiki-tests-" + Guid.NewGuid().ToString("N"));
 
@@ -50,6 +57,9 @@ public sealed class DatabaseFixture : IAsyncLifetime
             b.UseSetting("RateLimits:LoginPerMinute", "1000"); // every test logs in from the same address
             b.UseSetting("Media:Root", MediaRoot);
             b.UseSetting("YouTube:ApiKey", ""); // never a real key from user secrets: no live network in tests
+            b.UseSetting("Frontend:RevalidateUrl", "http://frontend.test/api/revalidate");
+            b.UseSetting("Frontend:RevalidateSecret", RevalidateSecret);
+            b.ConfigureTestServices(s => s.AddHttpClient<Common.FrontendRevalidator>().ConfigurePrimaryHttpMessageHandler(Revalidations.Handler));
         });
         _ = Factory.Server; // boots the app: migrate + seed
 

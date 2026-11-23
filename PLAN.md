@@ -407,11 +407,11 @@ Rules shared by every importer:
 Built in four slices (5a–5d), each tested, reviewed and committed on its own. §5 holds the rendering, caching and display decisions.
 
 **5a: foundation**
-- [ ] Generate TS types from `/openapi/v1.json` into `src/lib/api/schema.d.ts` (`npm run gen:api`); typed fetch wrapper with base URL from `API_BASE_URL`, `redirect: "manual"` for slug redirects (`permanentRedirect()`)
-- [ ] `rewrites` for `/api/*` in development (§5)
-- [ ] Layout: header with search (goes to `/firearms?q=…`; firearms only), nav (Firearms, Cartridges, Mechanisms, People, Organizations; Timeline waits for Phase 8), footer with the content license; loading, error and not-found states
-- [ ] `src/lib/units.ts` (mm⇄in, g⇄lb/oz, m/s⇄ft/s, m⇄yd) and fuzzy-date formatting ("1947", "c. 1947", "March 1942", "23 January 1855", "1950s", "1942–1944"), with Vitest
-- [ ] `/api/revalidate` route handler (secret from env) and the API side: a revalidate client called after admin writes and import runs (§5)
+- [x] Generate TS types from `/openapi/v1.json` into `src/lib/api/schema.d.ts` (`npm run gen:api`); typed fetch wrapper with base URL from `API_BASE_URL`, `redirect: "manual"` for slug redirects (`permanentRedirect()`); loaders return `Loaded<T>` (ok / moved / missing) because they cannot redirect from inside the cache, and pages `settle()` it. The API now types integers strictly (no "number | string" in the schema)
+- [x] `rewrites` for `/api/*` and `/media/*` in development (§5)
+- [x] Layout: header with search (goes to `/firearms?q=…`; firearms only), nav (Firearms, Cartridges, Mechanisms, People, Organizations; Timeline waits for Phase 8), footer with the content license; loading, error and not-found states
+- [x] `src/lib/units.ts` (mm⇄in, g⇄lb/oz, m/s⇄ft/s, m⇄yd) and fuzzy-date formatting ("1947", "c. 1947", "March 1942", "23 January 1855", "1950s", "1942–1944"), with Vitest
+- [x] `/api/revalidate` route handler (secret from env, compared in constant time; 401/400 otherwise) and the API side: an EF interceptor records the tags of each successful save, the admin group sends them after the request (a failed write sends nothing), and import runs send `all` (§5)
 
 **5b: firearms list and home**
 - [ ] `/firearms`: multi-select filter sidebar driven by `/facets`, URL-synced state, debounced text search, pagination; filter ⇄ query-string helpers with Vitest

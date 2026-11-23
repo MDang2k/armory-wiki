@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
+const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:5080";
+
 const nextConfig: NextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
@@ -11,6 +12,18 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  // Development only: the browser talks to one origin, as it will behind Caddy in production (PLAN.md §5).
+  // Array rewrites apply after the filesystem, so app/api/revalidate is served by Next, not proxied.
+  async rewrites() {
+    if (process.env.NODE_ENV !== "development") {
+      return [];
+    }
+
+    return [
+      { source: "/api/:path*", destination: `${apiBaseUrl}/api/:path*` },
+      { source: "/media/:path*", destination: `${apiBaseUrl}/media/:path*` },
+    ];
   },
 };
 
