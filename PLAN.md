@@ -233,11 +233,12 @@ Write endpoints come in Phase 3 (admin).
 
 | Route | Content |
 |---|---|
-| `/` | Search box, featured firearms, browse by tag/era/country |
+| `/` | Search box, number of firearms, browse by type tag / era / country (counts from facets) |
 | `/firearms` | Filter sidebar (multi-select checkboxes with disjunctive facet counts) + results grid. **All filter state lives in URL query params.** |
 | `/firearms/[slug]` | Infobox (specs table per variant, variant switcher), designers, cartridge links, mechanism link, development history, service history, adoptions, related firearms, image gallery with attribution, approved videos (embedded), citations as footnotes, Wikipedia attribution footer when applicable |
 | `/firearms/[slug]/family-tree` | React Flow graph |
-| `/compare?slugs=…` | Side-by-side spec table |
+| `/compare?slugs=…` | Side-by-side spec table; a search adds firearms (up to 4), each column can be removed; reached from a "Compare" link on firearm pages |
+| `/people`, `/organizations`, `/cartridges` | Alphabetical, paged lists (no search yet) |
 | `/people/[slug]` | Biography + design timeline |
 | `/organizations/[slug]` | Description + firearms designed / manufactured |
 | `/cartridges/[slug]` | Specs, parent/child cartridges, firearms chambered in it |
@@ -245,9 +246,15 @@ Write endpoints come in Phase 3 (admin).
 | `/timeline` | Horizontal timeline with filters |
 | `/admin/...` | Phase 7 |
 
-- Detail pages: Next 16 **Cache Components** (`cacheComponents: true` in `next.config.ts`). Data loaders are `"use cache"` functions with `cacheLife('hours')` and `cacheTag(...)` (`firearm:<slug>`, `firearms:list`, `person:<slug>`, …), plus `generateMetadata` for title/description/OpenGraph. Route segment configs like `export const revalidate` are not allowed with Cache Components; read `node_modules/next/dist/docs/01-app/02-guides/migrating-to-cache-components.md` before Phase 5.
-- **On-demand revalidation:** a secret-protected route `POST /api/revalidate` (Next route handler; Caddy routes it to Next, not the API) takes a list of tags. The API calls it after every admin write and after each import batch.
-- **Units:** the server always renders **metric**. The Metric/Imperial toggle is a small client component that stores the choice in `localStorage` and swaps displayed values after hydration. Never read cookies in Server Components for this; it would make pages dynamic.
+- Detail pages: Next 16 **Cache Components** (`cacheComponents: true` in `next.config.ts`). Data loaders are `"use cache"` functions with `cacheLife('hours')` and `cacheTag(...)`, plus `generateMetadata` for title/description/OpenGraph. **No `generateStaticParams`:** pages render per request from cached data, awaiting `params` inside `<Suspense>` so the shell prerenders, and `next build` never needs the API. `/firearms` renders its results on the server from `searchParams` inside `<Suspense>`, through a loader keyed by the normalized filters (cached for minutes); client components only rewrite the URL.
+- **Cache tags:** every loader tags the entity it shows (`firearm:<slug>`, `person:<slug>`, …), each entity type it embeds (`firearms`, `people`, `organizations`, `cartridges`, `mechanisms`, `reference`) and `all`. Route segment configs like `export const revalidate` are not allowed with Cache Components; read `node_modules/next/dist/docs/01-app/02-guides/migrating-to-cache-components.md` before Phase 5.
+- **On-demand revalidation:** a secret-protected route `POST /api/revalidate` (Next route handler; Caddy routes it to Next, not the API) takes a list of tags and expires them at once (`revalidateTag(tag, { expire: 0 })`: the next visit sees the edit, never stale content). The API calls it after every admin write commits (the entity's tag and its type tag, plus the old slug's tag on a rename) and once at the end of each import run (`all`). URL and secret come from configuration; unset means no call; a failed call is logged and never fails the write.
+- **Units:** every measurement shows both systems, metric first: "870 mm (34.3 in)", "4.3 kg (9.5 lb)". No toggle, so no client state and no flash after hydration.
+- **Images:** plain `<img>` with the stored WebP sizes (thumb 320, medium 1280), width/height set, lazy-loaded; no `next/image` optimizer.
+- **Videos:** click to load: a title card with a play button; the `youtube-nocookie.com` iframe is created only on click, so nothing reaches YouTube before that.
+- **Prose links** stay external links to en.wikipedia.org; mapping them to our own pages is later work.
+- **Citations:** a citation tied to a field puts a numbered superscript next to that field; every citation is listed under "Sources".
+- **Look:** dense and encyclopedic, close to Wikipedia: system fonts, light and dark following the OS, Tailwind only, no component library.
 - **Redirects:** API detail endpoints answer a renamed slug with **301** + `Location`; fetch with `redirect: "manual"` and call `permanentRedirect()` to the new slug.
 - **Attribution:** firearm pages with `WikipediaTitle` show "Text adapted from Wikipedia: <link to that revision>, CC BY-SA 4.0". The site footer states the CC BY-SA 4.0 license for prose.
 - **Dev proxy:** `next.config` `rewrites` forward `/api/*` (except `/api/revalidate`) to the backend in development, so the browser always talks to one origin. No CORS needed.
@@ -397,18 +404,28 @@ Rules shared by every importer:
 **Done when** (checked after 4a; met: a live run on a fresh database created 2,215 firearms and matched 14 of the 15 seeded ones by QID, and a second run reported everything unchanged): a dry run reports sensible counts; a real run against a fresh DB imports firearms without duplicating seeded ones; a second run changes nothing; tests are green. 4b–4d each end with their tests green and a dry run reporting sensible counts.
 
 ### Phase 5: Frontend, read-only
-- [ ] Generate TS types from `/openapi/v1.json` into `src/lib/api/schema.d.ts` (`npm run gen:api` script); typed fetch wrapper with base URL from `API_BASE_URL` env var and fetch tags
+Built in four slices (5a–5d), each tested, reviewed and committed on its own. §5 holds the rendering, caching and display decisions.
+
+**5a: foundation**
+- [ ] Generate TS types from `/openapi/v1.json` into `src/lib/api/schema.d.ts` (`npm run gen:api`); typed fetch wrapper with base URL from `API_BASE_URL`, `redirect: "manual"` for slug redirects (`permanentRedirect()`)
 - [ ] `rewrites` for `/api/*` in development (§5)
-- [ ] Layout: header with search, nav (Firearms, Cartridges, Mechanisms, Designers, Timeline), units toggle (client component), footer with content license
-- [ ] All routes from §5 except `/admin`, `/timeline` and `/firearms/[slug]/family-tree` (Phase 8)
-- [ ] `/firearms`: multi-select filter sidebar driven by `/facets`, URL-synced state, debounced text search, pagination
-- [ ] Firearm detail: variant switcher that updates the specs table; Markdown rendering via `react-markdown` (no raw HTML); image gallery with attribution and license under each image; approved videos as `youtube-nocookie.com` embeds; citations as footnotes; Wikipedia attribution
-- [ ] `"use cache"` data loaders with `cacheLife` + `cacheTag`, and a `/api/revalidate` route handler (secret from env) calling `revalidateTag`; wire the API's revalidate client to it
-- [ ] Slug redirects via `permanentRedirect()`
-- [ ] `src/lib/units.ts`: mm⇄in, g⇄lb/oz, m/s⇄ft/s, m⇄yd, with unit tests (Vitest)
+- [ ] Layout: header with search (goes to `/firearms?q=…`; firearms only), nav (Firearms, Cartridges, Mechanisms, People, Organizations; Timeline waits for Phase 8), footer with the content license; loading, error and not-found states
+- [ ] `src/lib/units.ts` (mm⇄in, g⇄lb/oz, m/s⇄ft/s, m⇄yd) and fuzzy-date formatting ("1947", "c. 1947", "March 1942", "23 January 1855", "1950s", "1942–1944"), with Vitest
+- [ ] `/api/revalidate` route handler (secret from env) and the API side: a revalidate client called after admin writes and import runs (§5)
+
+**5b: firearms list and home**
+- [ ] `/firearms`: multi-select filter sidebar driven by `/facets`, URL-synced state, debounced text search, pagination; filter ⇄ query-string helpers with Vitest
+- [ ] `/`: search box, firearm count, browse by type tag, era and country
+
+**5c: firearm detail**
+- [ ] Infobox and specs per variant with a variant switcher; designers, cartridges, mechanism; development and service history via `react-markdown` (no raw HTML); adoptions; related firearms; image gallery with author and license under each image; approved videos (click to load); citations as footnotes; Wikipedia attribution linking the exact revision (helper with Vitest); "Compare" link
+
+**5d: everything else**
+- [ ] `/people`, `/organizations`, `/cartridges` (lists) and their detail pages; `/mechanisms` and `/mechanisms/[slug]`; `/compare`
 - [ ] `generateMetadata` on every detail page; `sitemap.ts` (Published only) and `robots.ts`
-- [ ] Loading and error states (`loading.tsx`, `error.tsx`, `not-found.tsx`)
 - [ ] Responsive down to 375px width
+
+Tests: Vitest for `lib/` logic only (units, dates, filter query strings, attribution link); no component or browser tests. The "Done when" is checked by clicking through the running site.
 
 **Done when:** every seeded entity is reachable by clicking from the home page, filters round-trip via URL, an admin edit shows on the page after revalidation without waiting for the hour, `npm run build` and `npm run lint` pass, and Vitest is green.
 
