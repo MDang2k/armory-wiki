@@ -1,5 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { api } from "./client";
+import { api, toLoaded } from "./client";
 import { parseFilters, toApiQuery } from "../filters";
 
 /**
@@ -51,4 +51,12 @@ export async function loadOverview() {
   }
 
   return { total: list.data.totalCount, facets: facets.data };
+}
+
+/** A firearm's page: everything it shows (designers, cartridges, mechanism, countries, related firearms). */
+export async function loadFirearm(slug: string) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`firearm:${slug}`, "firearms", "people", "organizations", "cartridges", "mechanisms", "reference", "all");
+  return toLoaded(await api.GET("/api/firearms/{slug}", { params: { path: { slug } } }));
 }

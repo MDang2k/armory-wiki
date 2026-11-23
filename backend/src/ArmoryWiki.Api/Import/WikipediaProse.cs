@@ -261,11 +261,11 @@ public static partial class WikipediaProse
 
         if (href.StartsWith("./", StringComparison.Ordinal))
         {
-            return "https://en.wikipedia.org/wiki/" + href[2..].Replace(" ", "_", StringComparison.Ordinal).Replace(")", "%29", StringComparison.Ordinal);
+            return "https://en.wikipedia.org/wiki/" + href[2..].Replace(" ", "_", StringComparison.Ordinal).Replace("(", "%28", StringComparison.Ordinal).Replace(")", "%29", StringComparison.Ordinal);
         }
 
         return href.StartsWith("https://", StringComparison.Ordinal) || href.StartsWith("http://", StringComparison.Ordinal)
-            ? href.Replace(" ", "%20", StringComparison.Ordinal).Replace(")", "%29", StringComparison.Ordinal)
+            ? href.Replace(" ", "%20", StringComparison.Ordinal).Replace("(", "%28", StringComparison.Ordinal).Replace(")", "%29", StringComparison.Ordinal)
             : null;
     }
 

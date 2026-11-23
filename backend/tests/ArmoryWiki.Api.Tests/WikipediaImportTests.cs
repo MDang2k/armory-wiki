@@ -51,7 +51,7 @@ public sealed class WikipediaProseTests
             <ul><li>First<ul><li>Nested</li></ul></li><li>Second</li></ul>
             <figure><img src="x.jpg"/><figcaption>A photo</figcaption></figure>
             <section><h3>Korea</h3><p>See <a rel="mw:ExtLink" href="https://example.org/a b">source</a>.</p></section></section>
-            <section><h2>Design</h2><p>Gas operated, by <a rel="mw:WikiLink" class="new" href="./Ivan_Petrov?action=edit&amp;redlink=1">Ivan Petrov</a>.</p><section><h3>Empty subsection</h3></section></section>
+            <section><h2>Design</h2><p>Gas operated, by <a rel="mw:WikiLink" class="new" href="./Ivan_Petrov?action=edit&amp;redlink=1">Ivan Petrov</a>, not <a rel="mw:WikiLink" href="./Blowback_(arms)">blowback</a>.</p><section><h3>Empty subsection</h3></section></section>
             <section><h2>Users</h2><div class="div-col"><ul><li>Finland</li></ul></div><section><h3>Former users</h3></section></section>
             <section><h2>See also</h2><ul><li>Other rifle</li></ul></section>
             </body></html>
@@ -63,7 +63,8 @@ public sealed class WikipediaProseTests
         Assert.Equal(
             "## Operational history\n\nUsed *widely* in 1\\_000 \\*wars\\* and more.\n\n- First\n  - Nested\n- Second\n\n### Korea\n\nSee [source](https://example.org/a%20b).\n\n## Users\n\n- Finland",
             prose.ServiceHistory);
-        Assert.Equal("## Design\n\nGas operated, by Ivan Petrov.", prose.DevelopmentHistory); // a red link keeps its text only
+        // A red link keeps its text only; parentheses in a URL are encoded, as CommonMark ends a link at an unbalanced one.
+        Assert.Equal("## Design\n\nGas operated, by Ivan Petrov, not [blowback](https://en.wikipedia.org/wiki/Blowback_%28arms%29).", prose.DevelopmentHistory);
     }
 
     [Fact]
