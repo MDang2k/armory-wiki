@@ -60,3 +60,106 @@ export async function loadFirearm(slug: string) {
   cacheTag(`firearm:${slug}`, "firearms", "people", "organizations", "cartridges", "mechanisms", "reference", "all");
   return toLoaded(await api.GET("/api/firearms/{slug}", { params: { path: { slug } } }));
 }
+
+export const LIST_PAGE_SIZE = 50;
+
+/** A page of people, organizations or cartridges (alphabetical lists, no search yet). */
+export async function loadPeople(page: number) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("people", "reference", "all");
+  const { data, response } = await api.GET("/api/people", { params: { query: { page, pageSize: LIST_PAGE_SIZE } } });
+  if (!data) throw new Error(`API ${response.status} listing people`);
+  return data;
+}
+
+export async function loadOrganizations(page: number) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("organizations", "reference", "all");
+  const { data, response } = await api.GET("/api/organizations", { params: { query: { page, pageSize: LIST_PAGE_SIZE } } });
+  if (!data) throw new Error(`API ${response.status} listing organizations`);
+  return data;
+}
+
+export async function loadCartridges(page: number) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("cartridges", "reference", "all");
+  const { data, response } = await api.GET("/api/cartridges", { params: { query: { page, pageSize: LIST_PAGE_SIZE } } });
+  if (!data) throw new Error(`API ${response.status} listing cartridges`);
+  return data;
+}
+
+export async function loadPerson(slug: string) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`person:${slug}`, "people", "firearms", "reference", "all");
+  return toLoaded(await api.GET("/api/people/{slug}", { params: { path: { slug } } }));
+}
+
+export async function loadOrganization(slug: string) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`organization:${slug}`, "organizations", "firearms", "reference", "all");
+  return toLoaded(await api.GET("/api/organizations/{slug}", { params: { path: { slug } } }));
+}
+
+export async function loadCartridge(slug: string) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`cartridge:${slug}`, "cartridges", "firearms", "reference", "all");
+  return toLoaded(await api.GET("/api/cartridges/{slug}", { params: { path: { slug } } }));
+}
+
+export async function loadMechanismTree() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("mechanisms", "all");
+  const { data, response } = await api.GET("/api/mechanisms");
+  if (!data) throw new Error(`API ${response.status} loading mechanisms`);
+  return data;
+}
+
+export async function loadMechanism(slug: string) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`mechanism:${slug}`, "mechanisms", "firearms", "all");
+  return toLoaded(await api.GET("/api/mechanisms/{slug}", { params: { path: { slug } } }));
+}
+
+/** Base variants side by side; the slugs arrive normalized (comma-joined, at most four). */
+export async function loadComparison(slugs: string) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag("firearms", "cartridges", "all");
+  return toLoaded(await api.GET("/api/firearms/compare", { params: { query: { slugs } } }));
+}
+
+/** Every published page's path, for the sitemap: each list read to the end, 100 at a time (the API maximum). */
+export async function loadSitemapPaths() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("firearms", "people", "organizations", "cartridges", "mechanisms", "all");
+  const pageSize = 100;
+  const collect = async (path: "/api/firearms" | "/api/people" | "/api/organizations" | "/api/cartridges", prefix: string) => {
+    const paths: string[] = [];
+    for (let page = 1; ; page++) {
+      const { data, response } = await api.GET(path, { params: { query: { page, pageSize } } });
+      if (!data) throw new Error(`API ${response.status} listing ${path} for the sitemap`);
+      paths.push(...data.items.map((item) => `${prefix}/${item.slug}`));
+      if (page * pageSize >= data.totalCount) return paths;
+    }
+  };
+  const flatten = (nodes: { slug: string; children: { slug: string; children: unknown[] }[] }[]): string[] =>
+    nodes.flatMap((n) => [`/mechanisms/${n.slug}`, ...flatten(n.children as typeof nodes)]);
+
+  const [firearms, people, organizations, cartridges, mechanisms] = await Promise.all([
+    collect("/api/firearms", "/firearms"),
+    collect("/api/people", "/people"),
+    collect("/api/organizations", "/organizations"),
+    collect("/api/cartridges", "/cartridges"),
+    loadMechanismTree(),
+  ]);
+  return [...firearms, ...people, ...organizations, ...cartridges, ...flatten(mechanisms)];
+}

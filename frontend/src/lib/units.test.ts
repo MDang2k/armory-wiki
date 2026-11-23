@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatLength, formatMass, formatRange, formatRate, formatVelocity, gToLb, mmToIn, mpsToFps, mToYd } from "./units";
+import { formatLength, formatSmallLength, formatMass, formatRange, formatRate, formatVelocity, gToLb, mmToIn, mpsToFps, mToYd } from "./units";
 
 describe("conversions", () => {
   it("uses exact international definitions", () => {
@@ -16,6 +16,11 @@ describe("formatting", () => {
     expect(formatLength(1100)).toBe("1,100 mm (43.3 in)");
     expect(formatVelocity(715)).toBe("715 m/s (2,346 ft/s)");
     expect(formatRange(400)).toBe("400 m (437 yd)");
+  });
+
+  it("shows cartridge dimensions to the hundredth", () => {
+    expect(formatSmallLength(7.92)).toBe("7.92 mm (0.312 in)");
+    expect(formatSmallLength(39)).toBe("39 mm (1.535 in)");
   });
 
   it("uses grams below a kilogram and kilograms above", () => {

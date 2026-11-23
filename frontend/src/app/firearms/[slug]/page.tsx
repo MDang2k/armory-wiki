@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
+import { Section, Sources } from "@/components/Article";
 import { FootnoteMarks } from "@/components/FootnoteMarks";
 import { ImageFigure } from "@/components/ImageFigure";
 import { Markdown } from "@/components/Markdown";
 import { loadFirearm } from "@/lib/api/loaders";
 import { settle } from "@/lib/api/settle";
 import type { Dto } from "@/lib/api/types";
-import { footnoteId, footnotes, type Citation, type Footnotes } from "@/lib/citations";
+import { footnotes, type Footnotes } from "@/lib/citations";
 import { formatFuzzyDate, type FuzzyDate } from "@/lib/dates";
 import { wikipediaUrl } from "@/lib/wikipedia";
 import { VariantSpecs } from "./VariantSpecs";
@@ -95,7 +96,7 @@ async function FirearmArticle({ params }: { params: PageProps<"/firearms/[slug]"
           <VideoList videos={f.videos} />
         </Section>
       )}
-      {f.citations.length > 0 && <Sources citations={f.citations} variants={f.variants} />}
+      <Sources citations={f.citations} variantName={(v) => f.variants.find((x) => x.slug === v)?.name} />
       {f.wikipedia && (
         <p className="border-t border-border pt-2 text-xs text-muted">
           Text adapted from the Wikipedia article{" "}
@@ -110,15 +111,6 @@ async function FirearmArticle({ params }: { params: PageProps<"/firearms/[slug]"
         </p>
       )}
     </article>
-  );
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="mt-6">
-      <h2 className="mb-2 border-b border-border pb-1 font-serif text-2xl">{title}</h2>
-      {children}
-    </section>
   );
 }
 
@@ -310,45 +302,6 @@ function Related({ firearm: f }: { firearm: Firearm }) {
           </div>
         ))}
       </dl>
-    </Section>
-  );
-}
-
-function Sources({ citations, variants }: { citations: Citation[]; variants: Dto<"VariantDto">[] }) {
-  const variantName = (slug: string | null) => variants.find((v) => v.slug === slug)?.name;
-  return (
-    <Section title="Sources">
-      <ol className="list-decimal space-y-1 pl-6 text-sm">
-        {citations.map((c, i) => {
-          const s = c.source;
-          const locatorIsLink = c.locator?.startsWith("https://") || c.locator?.startsWith("http://");
-          return (
-            <li key={i} id={footnoteId(i + 1)} className="target:bg-link/10">
-              {s.author && `${s.author}, `}
-              {s.url ? (
-                <a href={s.url} rel="noopener noreferrer">
-                  <cite>{s.title}</cite>
-                </a>
-              ) : (
-                <cite>{s.title}</cite>
-              )}
-              {[s.publisher, s.year].filter(Boolean).length > 0 && ` (${[s.publisher, s.year].filter(Boolean).join(", ")})`}
-              {c.locator &&
-                (locatorIsLink ? (
-                  <>
-                    {", "}
-                    <a href={c.locator} rel="noopener noreferrer">
-                      {c.locator.replace(/^https?:\/\//, "")}
-                    </a>
-                  </>
-                ) : (
-                  `, ${c.locator}`
-                ))}
-              {c.variant && <span className="text-muted"> (for the {variantName(c.variant) ?? c.variant})</span>}
-            </li>
-          );
-        })}
-      </ol>
     </Section>
   );
 }

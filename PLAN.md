@@ -421,13 +421,13 @@ Built in four slices (5a–5d), each tested, reviewed and committed on its own. 
 - [x] Infobox and specs per variant with a variant switcher; designers, cartridges, mechanism; development and service history via `react-markdown` (no raw HTML); adoptions; related firearms; image gallery with author and license under each image; approved videos (click to load); citations as footnotes; Wikipedia attribution linking the exact revision (helper with Vitest); "Compare" link. Footnote numbering is a tested helper too. **Status codes:** with Cache Components the shell streams first, so an unknown or draft slug answers 200 with the not-found page and `noindex`, and a renamed slug answers 200 with an instant meta refresh to the new one (Next 16 documents this; Google treats it as a permanent redirect). True 404/308 would need a per-request slug lookup in Proxy, not worth it now. The importer now also encodes "(" in links (Wikipedia titles like "Blowback (arms)" broke the Markdown)
 
 **5d: everything else**
-- [ ] `/people`, `/organizations`, `/cartridges` (lists) and their detail pages; `/mechanisms` and `/mechanisms/[slug]`; `/compare`
-- [ ] `generateMetadata` on every detail page; `sitemap.ts` (Published only) and `robots.ts`
-- [ ] Responsive down to 375px width
+- [x] `/people`, `/organizations`, `/cartridges` (lists, 50 a page) and their detail pages (each with "filter firearms by this …" links into `/firearms`); `/mechanisms` (tree) and `/mechanisms/[slug]` (breadcrumb, kinds, firearms); `/compare` (an add-firearm search calling the public list API from the browser, remove links, `noindex`)
+- [x] `generateMetadata` on every detail page; `sitemap.ts` (Published only, per request from cached data) and `robots.ts`, absolute URLs from `SITE_URL`
+- [x] Responsive down to 375px width (checked page by page: no sideways scrolling)
 
 Tests: Vitest for `lib/` logic only (units, dates, filter query strings, attribution link); no component or browser tests. The "Done when" is checked by clicking through the running site.
 
-**Done when:** every seeded entity is reachable by clicking from the home page, filters round-trip via URL, an admin edit shows on the page after revalidation without waiting for the hour, `npm run build` and `npm run lint` pass, and Vitest is green.
+**Done when** (met: a crawler starting at `/` reached all 59 published seeded entities with no error or not-found links, and the sitemap lists them; the admin-edit check passed in 5b): every seeded entity is reachable by clicking from the home page, filters round-trip via URL, an admin edit shows on the page after revalidation without waiting for the hour, `npm run build` and `npm run lint` pass, and Vitest is green.
 
 ### Phase 6: Deploy
 - [ ] Dockerfiles for API and frontend (multi-stage, non-root)
@@ -435,7 +435,7 @@ Tests: Vitest for `lib/` logic only (units, dates, filter query strings, attribu
 - [ ] `deploy/Caddyfile`: automatic TLS; `/api/revalidate` → web; `/api/*` → api; `/media/*` → media volume with long cache headers; everything else → web
 - [ ] GitHub Actions: build + test on PR; on `main`, build images → push to GHCR → SSH to the VPS → `docker compose pull && docker compose up -d`
 - [ ] `UseForwardedHeaders` trusting only Caddy, so the per-IP login rate limit and lockout see real client addresses (otherwise every visitor shares one bucket and anyone can keep the admin locked out)
-- [ ] Secrets via a `.env` on the VPS (never committed); admin credentials, DB password, revalidate secret, YouTube API key (the import contact is the public project URL, not a secret)
+- [ ] Secrets via a `.env` on the VPS (never committed); admin credentials, DB password, revalidate secret (same value in the API and the frontend), YouTube API key; plus `SITE_URL` for the frontend (it refuses to start without it) (the import contact is the public project URL, not a secret)
 - [ ] Nightly backups: `pg_dump` + media volume to offsite storage (e.g. Backblaze B2); document and test a restore
 
 **Done when:** the site is live on its domain over HTTPS, a push to `main` deploys automatically, and a backup has been restored into a scratch DB successfully.

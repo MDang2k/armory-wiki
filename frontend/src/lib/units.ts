@@ -30,3 +30,7 @@ export const formatRange = (m: number) => `${number(m)} m (${number(mToYd(m))} y
 /** Cyclic rate: "600 rounds/min", or a span "550–650 rounds/min". Has no imperial form. */
 export const formatRate = (min: number, max?: number | null) =>
   max == null || max === min ? `${number(min)} rounds/min` : `${number(min)}–${number(max)} rounds/min`;
+
+/** Cartridge dimensions, to the hundredth of a millimetre: "7.92 mm (0.312 in)". */
+export const formatSmallLength = (mm: number) =>
+  `${mm.toLocaleString("en-US", { maximumFractionDigits: 2 })} mm (${number(mmToIn(mm), 3)} in)`;

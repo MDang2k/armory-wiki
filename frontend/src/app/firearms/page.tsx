@@ -18,6 +18,7 @@ import {
   type MultiKey,
   type Sort,
 } from "@/lib/filters";
+import { Pager } from "@/components/Article";
 import { SearchBox } from "./SearchBox";
 
 export const metadata: Metadata = {
@@ -74,7 +75,7 @@ async function Results({ searchParams }: { searchParams: PageProps<"/firearms">[
             ))}
           </ul>
         )}
-        <Pagination filters={filters} total={list.totalCount} />
+        <Pager page={filters.page} pages={Math.ceil(list.totalCount / PAGE_SIZE)} href={(p) => firearmsHref(withPage(filters, p))} />
       </section>
       <aside id="filters" aria-label="Filters" className="space-y-5 text-sm md:order-first">
         <TagFacets filters={filters} tags={facets.tags} />
@@ -297,38 +298,5 @@ function FirearmCard({ firearm }: { firearm: Dto<"FirearmListItemDto"> }) {
         <span className="block text-xs">{[...types, firearm.primaryCartridge?.name].filter(Boolean).join(" · ")}</span>
       </span>
     </Link>
-  );
-}
-
-function Pagination({ filters, total }: { filters: FirearmFilters; total: number }) {
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  if (pages === 1) {
-    return null;
-  }
-
-  const current = Math.min(filters.page, pages);
-  const shown = [...new Set([1, current - 2, current - 1, current, current + 1, current + 2, pages])]
-    .filter((p) => p >= 1 && p <= pages)
-    .sort((a, b) => a - b);
-
-  return (
-    <nav aria-label="Pages" className="flex flex-wrap items-center gap-1 text-sm">
-      {current > 1 && <Link href={firearmsHref(withPage(filters, current - 1))}>‹ Previous</Link>}
-      {shown.map((p, i) => (
-        <span key={p} className="flex items-center gap-1">
-          {i > 0 && p - shown[i - 1] > 1 && <span className="text-muted">…</span>}
-          {p === current ? (
-            <strong aria-current="page" className="px-1.5">
-              {p}
-            </strong>
-          ) : (
-            <Link href={firearmsHref(withPage(filters, p))} className="px-1.5">
-              {p}
-            </Link>
-          )}
-        </span>
-      ))}
-      {current < pages && <Link href={firearmsHref(withPage(filters, current + 1))}>Next ›</Link>}
-    </nav>
   );
 }
