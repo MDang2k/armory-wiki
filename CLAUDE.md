@@ -27,6 +27,8 @@ cd frontend && npm run dev                              # http://localhost:3000 
 cd frontend && npm run gen:api                          # after API changes, with the API running: regenerates src/lib/api/schema.d.ts
 cd frontend && npm test                                 # Vitest (src/lib)
 cd frontend && npm run lint && npm run build
+docker build -t ghcr.io/mdang2k/armory-wiki-api:local backend && docker build -t ghcr.io/mdang2k/armory-wiki-web:local frontend   # production images
+docker compose -f deploy/docker-compose.prod.yml --env-file <env> -p armorywiki-local run --rm api migrate   # then `up -d`: the production stack on https://localhost (SITE_DOMAIN=localhost, IMAGE_TAG=local)
 ```
 
 ## Layout

@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:5080";
 
 const nextConfig: NextConfig = {
+  output: "standalone", // the Docker image runs .next/standalone/server.js (PLAN.md Phase 6)
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

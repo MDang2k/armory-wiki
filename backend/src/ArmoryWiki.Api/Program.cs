@@ -18,6 +18,8 @@ using ArmoryWiki.Infrastructure.Media;
 using ArmoryWiki.Infrastructure.Persistence;
 using ArmoryWiki.Infrastructure.Seed;
 using FluentValidation;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Scalar.AspNetCore;
@@ -45,6 +47,24 @@ Directory.CreateDirectory(mediaRoot);
 builder.Services.AddSingleton(new FileStore(mediaRoot));
 builder.Services.AddProblemDetails();
 builder.AddAdminAuth();
+// Production keeps the keys behind auth and antiforgery cookies on a volume, so a redeploy does not sign the admin out.
+if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath)
+{
+    builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keysPath)).SetApplicationName("ArmoryWiki");
+}
+
+// Behind Caddy: trust X-Forwarded-For/-Proto only from the compose network, so the login rate limit and lockout see
+// real client addresses and cookies know the request was HTTPS (PLAN.md Phase 6).
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownIPNetworks.Clear();
+    o.KnownProxies.Clear();
+    if (builder.Configuration["ForwardedHeaders:KnownNetwork"] is { Length: > 0 } network)
+    {
+        o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+    }
+});
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 ValidationExtensions.ConfigureValidation();
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -66,6 +86,7 @@ builder.Services.AddOpenApi(o => o.AddSchemaTransformer((schema, context, _) =>
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 if (app.Environment.IsDevelopment())
@@ -77,6 +98,17 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
+
+if (args is ["migrate"])
+{
+    // Production: `docker compose run --rm api migrate` before `up`; the API itself never migrates there.
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<ArmoryWikiDbContext>();
+    await db.Database.MigrateAsync();
+    await ReferenceDataSeeder.SeedAsync(db);
+    Console.WriteLine("Migrations applied and reference data seeded.");
+    return;
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -98,6 +130,11 @@ if (ImportCommands.IsImportCommand(args))
 }
 
 await AdminAuth.EnsureAdminAccountAsync(app.Services);
+
+// Container health check (not routed by Caddy): the process answers and reaches the database.
+app.MapGet("/healthz", async (ArmoryWikiDbContext db, CancellationToken ct) =>
+        await db.Database.CanConnectAsync(ct) ? Results.Ok("ok") : Results.StatusCode(StatusCodes.Status503ServiceUnavailable))
+    .ExcludeFromDescription();
 
 // Server-side fetches are cached by Next.js; only endpoints the browser calls directly opt into public caching.
 var api = app.MapGroup("/api").WithCacheControl("no-store");

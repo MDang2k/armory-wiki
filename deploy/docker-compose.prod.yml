@@ -1,0 +1,86 @@
+# Production stack (PLAN.md Phase 6, ADR-0002). On the VPS it lives in /opt/armorywiki next to Caddyfile and .env.
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml run --rm api migrate
+#   docker compose -f docker-compose.prod.yml up -d
+# Once, before the first import: the API runs as uid 1654 and writes its reports here (Docker would create the
+# folder as root):  mkdir -p import-reports && sudo chown 1654:1654 import-reports
+name: armorywiki
+
+x-api-environment: &api-environment
+  ConnectionStrings__ArmoryWiki: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+  Admin__Email: ${ADMIN_EMAIL}
+  Admin__Password: ${ADMIN_PASSWORD}
+  Frontend__RevalidateUrl: http://web:3000/api/revalidate # inside the network; Caddy never routes it
+  Frontend__RevalidateSecret: ${REVALIDATE_SECRET}
+  YouTube__ApiKey: ${YOUTUBE_API_KEY:-}
+  ForwardedHeaders__KnownNetwork: 172.30.0.0/24 # the network below: only Caddy forwards from it
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - media:/srv/media:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - api
+
+  web:
+    image: ghcr.io/mdang2k/armory-wiki-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: http://api:8080
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+      SITE_URL: https://${SITE_DOMAIN}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    image: ghcr.io/mdang2k/armory-wiki-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment: *api-environment
+    volumes:
+      - media:/data/media
+      - keys:/data/keys
+      - ./import-reports:/app/import-reports
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  media:
+  keys:
+  postgres-data:
+  caddy-data:
+  caddy-config:
