@@ -32,3 +32,8 @@ Thumbs.db
 
 # Import run reports (PLAN.md Phase 4)
 import-reports/
+
+# Backups on the VPS (deploy/backup.sh, restore-check.sh)
+deploy/backups/
+deploy/restore-check/
+deploy/backup.env

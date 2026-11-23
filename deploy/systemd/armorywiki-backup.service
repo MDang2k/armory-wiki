@@ -1,0 +1,12 @@
+# Installed by deploy/README.md: sudo cp deploy/systemd/armorywiki-backup.* /etc/systemd/system/
+[Unit]
+Description=ArmoryWiki nightly backup (database dump and media to restic)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+# The deploy user: in the docker group, owns /opt/armorywiki.
+User=deploy
+WorkingDirectory=/opt/armorywiki
+ExecStart=/opt/armorywiki/backup.sh

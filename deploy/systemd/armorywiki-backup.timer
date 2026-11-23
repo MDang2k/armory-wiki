@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the ArmoryWiki backup every night
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=15m
+# A night missed while the server was off runs at the next boot.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

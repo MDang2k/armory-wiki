@@ -141,7 +141,7 @@ jobs:
         if: steps.ready.outputs.ready == 'true'
         run: |
           ssh_opts=(-i "$HOME/.ssh/deploy_key" -o StrictHostKeyChecking=yes)
-          scp "${ssh_opts[@]}" deploy/docker-compose.prod.yml deploy/Caddyfile "$DEPLOY_USER@$DEPLOY_HOST:/opt/armorywiki/"
+          scp "${ssh_opts[@]}" deploy/docker-compose.prod.yml deploy/Caddyfile deploy/backup.sh deploy/restore-check.sh "$DEPLOY_USER@$DEPLOY_HOST:/opt/armorywiki/"
           ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" IMAGE_TAG="${{ github.sha }}" 'bash -s' <<'REMOTE'
           set -euo pipefail
           cd /opt/armorywiki
