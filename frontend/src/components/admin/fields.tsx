@@ -54,26 +54,33 @@ export function MarkdownInput({ id, registration, invalid, value, rows = 6 }: Re
 }
 
 /** The admin list endpoints a picker can search; they all answer pages of `AdminEntityListItemDto`. */
-export type PickerResource = "countries" | "mechanisms" | "people" | "organizations" | "cartridges" | "tags";
+export type PickerResource = "countries" | "mechanisms" | "people" | "organizations" | "cartridges" | "tags" | "firearms";
 
 /**
  * Picks an entity by slug (PLAN.md Phase 7): a text field with a native `<datalist>` of the ten best matches from
  * the resource's admin list, drafts included and labelled. Typing a slug by hand works too; the API reports an
  * unknown one on this field.
  */
-export function EntityPicker({ id, registration, invalid, value, resource }: Registered & { value: string; resource: PickerResource }) {
+export function EntityPicker({
+  id,
+  registration,
+  invalid,
+  value,
+  resource,
+  label,
+}: Registered & { value: string; resource: PickerResource; /** For a picker without a visible label (a row in a list). */ label?: string }) {
   const q = useDebounced(value.trim());
   const matches = useQuery({
     queryKey: ["admin", resource, "picker", q],
     queryFn: async () =>
-      // ponytail: one path stands in for all six; their query and answer shapes are the same.
+      // ponytail: one path stands in for them all; their query and answer shapes are the same.
       unwrap(await adminApi.GET(`/api/admin/${resource}` as "/api/admin/countries", { params: { query: { q: q || undefined, pageSize: 10 } } })),
     staleTime: 60_000,
   });
 
   return (
     <>
-      <input id={id} list={`${id}-options`} autoComplete="off" {...registration} {...errorProps(id, invalid)} className={inputClass} />
+      <input id={id} aria-label={label} list={`${id}-options`} autoComplete="off" {...registration} {...errorProps(id, invalid)} className={inputClass} />
       <datalist id={`${id}-options`}>
         {matches.data?.items.map((item) => (
           <option key={item.id} value={item.slug} label={item.status === "Draft" ? `${item.name} (draft)` : item.name} />

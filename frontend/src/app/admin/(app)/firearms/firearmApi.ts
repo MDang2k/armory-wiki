@@ -24,6 +24,16 @@ export async function deleteFirearm(id: number, version: number) {
   return unwrap(await adminApi.DELETE("/api/admin/firearms/{id}", { params: { path: { id }, query: { version } } }));
 }
 
+/**
+ * Unlocks one lock key: a field ("designDate"), a list ("designers") or a variant's ("variants/12/weightEmptyG",
+ * "chamberings/12"). The route's key is a catch-all, so its slashes go as path separators, not as %2F.
+ */
 export async function unlockField(id: number, version: number, key: string) {
-  return unwrap(await adminApi.DELETE("/api/admin/firearms/{id}/locks/{key}", { params: { path: { id, key }, query: { version } } }));
+  return unwrap(
+    await adminApi.DELETE("/api/admin/firearms/{id}/locks/{key}", {
+      params: { path: { id, key }, query: { version } },
+      pathSerializer: (path) =>
+        path.replace("{id}", String(id)).replace("{key}", key.split("/").map(encodeURIComponent).join("/")),
+    }),
+  );
 }

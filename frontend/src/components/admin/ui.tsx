@@ -4,8 +4,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Dto } from "@/lib/api/types";
 
 /** Shared classes, so every admin form looks the same without a component library. */
-export const inputClass =
-  "w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm aria-invalid:border-red-600 dark:aria-invalid:border-red-400";
+/** A control sized by its content (selects in a row); {@link inputClass} fills its column. */
+export const compactInputClass =
+  "rounded border border-border bg-background px-2.5 py-1.5 text-sm aria-invalid:border-red-600 dark:aria-invalid:border-red-400";
+export const inputClass = `${compactInputClass} w-full`;
 export const buttonClass =
   "rounded border border-border bg-surface px-3 py-1.5 text-sm hover:bg-background disabled:cursor-not-allowed disabled:opacity-50";
 export const primaryButtonClass =
@@ -121,16 +123,49 @@ export function ConfirmButton({
   );
 }
 
-/** Warns before the page is closed or reloaded while `dirty`. In-app links are the form's job (it shows its marker). */
+// The forms on the page with unsaved changes: one set of listeners for all of them, so leaving asks once.
+const dirtyForms = new Set<symbol>();
+
+const warnOnUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+
+/** An in-app link (Next's router never fires beforeunload): ask first, and swallow the click when the answer is no. */
+function confirmLink(event: MouseEvent) {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return;
+  }
+
+  const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+  if (!link || link.target === "_blank" || link.origin !== window.location.origin) {
+    return;
+  }
+
+  if (!window.confirm("This page has unsaved changes. Leave without saving them?")) {
+    event.preventDefault();
+    event.stopPropagation(); // capture phase on document: the link's own handler never sees the click
+  }
+}
+
+/** Warns before leaving the page (closing, reloading, or an in-app link) while any form on it is `dirty`. */
 export function useUnsavedWarning(dirty: boolean) {
   useEffect(() => {
     if (!dirty) {
       return;
     }
 
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
+    const id = Symbol();
+    if (dirtyForms.size === 0) {
+      window.addEventListener("beforeunload", warnOnUnload);
+      document.addEventListener("click", confirmLink, true);
+    }
+
+    dirtyForms.add(id);
+    return () => {
+      dirtyForms.delete(id);
+      if (dirtyForms.size === 0) {
+        window.removeEventListener("beforeunload", warnOnUnload);
+        document.removeEventListener("click", confirmLink, true);
+      }
+    };
   }, [dirty]);
 }
 

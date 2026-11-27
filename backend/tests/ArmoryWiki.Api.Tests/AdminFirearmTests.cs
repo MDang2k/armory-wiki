@@ -389,4 +389,19 @@ public sealed class AdminFirearmTests(DatabaseFixture fixture) : IAsyncLifetime
             all.Items.Where(i => i.MissingForPublish.Count == 0).Select(i => i.Id).Order(),
             allReady!.Items.Select(i => i.Id).Order());
     }
+
+    [Fact]
+    public async Task Variant_and_list_locks_unlock_by_their_slash_keys()
+    {
+        var f = await CreateAsync(new { name = "Slash Lock Probe" });
+        var baseVariant = f.Variants.Single(v => v.IsBaseVariant);
+        f = await ReadAsync(await PutAsync(f, $"/variants/{baseVariant.Id}", new { name = "Slash Lock Probe", weightEmptyG = 3100 }));
+        var key = $"variants/{baseVariant.Id}/weightEmptyG";
+        Assert.Contains(key, f.LockedFields);
+
+        // The admin UI sends the key with its slashes as path separators (a catch-all route segment).
+        f = await ReadAsync(await _admin.DeleteAsync($"{Firearms}/{f.Id}/locks/{key}?version={f.Version}"));
+
+        Assert.DoesNotContain(key, f.LockedFields);
+    }
 }

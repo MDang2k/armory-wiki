@@ -46,3 +46,18 @@ export const MISSING_FOR_PUBLISH: Record<string, string> = {
   primaryCartridge: "primary cartridge",
   primaryCartridgePublished: "primary cartridge is a draft",
 };
+
+export const FIRING_MODES: Record<Dto<"FiringModes">, string> = {
+  SemiAutomatic: "semi-automatic",
+  Burst: "burst",
+  Automatic: "automatic",
+};
+
+/** A relation as the admin enters it on this firearm: "this firearm … <the other one>" (GLOSSARY.md). */
+export const RELATION_TYPES: Record<Dto<"RelationType">, string> = {
+  DerivedFrom: "is derived from",
+  CopyOf: "is a copy of",
+  InfluencedBy: "was influenced by",
+  CompetedAgainst: "competed against",
+  Replaced: "replaced",
+};

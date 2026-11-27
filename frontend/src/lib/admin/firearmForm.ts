@@ -1,17 +1,10 @@
 import { z } from "zod";
 import type { Dto } from "@/lib/api/types";
 import { FEED_SYSTEMS } from "@/lib/labels";
-import { fuzzyDateText, parseFuzzyDate } from "./fuzzyDate";
+import { dateOrNull, fuzzyDateField, orNull } from "./formFields";
+import { fuzzyDateText } from "./fuzzyDate";
 
 type FirearmInput = Dto<"FirearmInput">;
-
-/** A date field: the text must parse; the API checks the rest. */
-const fuzzyDateField = z.string().superRefine((text, ctx) => {
-  const parsed = parseFuzzyDate(text);
-  if (!parsed.ok) {
-    ctx.addIssue({ code: "custom", message: parsed.error });
-  }
-});
 
 const feedSystems = Object.keys(FEED_SYSTEMS) as [keyof typeof FEED_SYSTEMS, ...(keyof typeof FEED_SYSTEMS)[]];
 
@@ -38,13 +31,6 @@ export const firearmFormSchema = z.object({
 });
 
 export type FirearmFormValues = z.infer<typeof firearmFormSchema>;
-
-const orNull = (text: string) => (text.trim() === "" ? null : text.trim());
-
-function dateOrNull(text: string) {
-  const parsed = parseFuzzyDate(text);
-  return parsed.ok ? parsed.date : null; // the schema has already rejected what does not parse
-}
 
 /** The form for a firearm's stored fields (blank for a new one). */
 export function firearmFormValues(input: FirearmInput | null): FirearmFormValues {

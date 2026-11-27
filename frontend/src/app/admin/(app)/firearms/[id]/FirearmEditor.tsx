@@ -9,8 +9,10 @@ import { ApiProblem, isVersionConflict } from "@/lib/admin/problems";
 import { MISSING_FOR_PUBLISH } from "@/lib/labels";
 import { FirearmDetailsForm } from "../FirearmDetailsForm";
 import { deleteFirearm, firearmKeys, loadFirearm, setPublished } from "../firearmApi";
+import { AdoptionsSection, DesignersSection, ManufacturersSection, RelationsSection, TagsSection } from "./ListSections";
+import { VariantSections } from "./VariantSections";
 
-/** One firearm: its status and lifecycle, then its sections (details in 7a; the rest arrive in 7b). */
+/** One firearm: its status and lifecycle, then its parts, each saved on its own (PLAN.md Phase 7b). */
 export function FirearmEditor() {
   const { id } = useParams<{ id: string }>();
   const firearmId = Number(id);
@@ -124,6 +126,13 @@ export function FirearmEditor() {
         {/* Not keyed by version: publishing or unlocking must not wipe unsaved input. The form sends the latest version. */}
         <FirearmDetailsForm firearm={f} />
       </section>
+
+      <VariantSections firearm={f} />
+      <TagsSection firearm={f} />
+      <DesignersSection firearm={f} />
+      <ManufacturersSection firearm={f} />
+      <AdoptionsSection firearm={f} />
+      <RelationsSection firearm={f} />
     </div>
   );
 }

@@ -5,13 +5,8 @@ import { useState, type ReactNode } from "react";
 import { FootnoteMarks } from "@/components/FootnoteMarks";
 import type { Dto } from "@/lib/api/types";
 import { formatFuzzyDate } from "@/lib/dates";
+import { FIRING_MODES } from "@/lib/labels";
 import { formatLength, formatMass, formatRange, formatRate, formatVelocity } from "@/lib/units";
-
-const FIRING_MODES: Record<Dto<"FiringModes">, string> = {
-  SemiAutomatic: "semi-automatic",
-  Burst: "burst",
-  Automatic: "automatic",
-};
 
 /**
  * The specifications of one variant, with a switcher when there are several (base variant first). Server-rendered
