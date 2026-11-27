@@ -3,6 +3,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useFieldArray, useWatch } from "react-hook-form";
+import { CitationsSection } from "@/components/admin/CitationsSection";
 import { EntityPicker, FuzzyDateInput } from "@/components/admin/fields";
 import { ConfirmButton, Field, Notice, buttonClass, inputClass, primaryButtonClass } from "@/components/admin/ui";
 import { adminApi } from "@/lib/admin/client";
@@ -217,6 +218,12 @@ function VariantCard({ firearm, variant }: { firearm: Firearm; variant: Firearm[
           }
           fields={ChamberingFields}
           saveLabel="Save ammunition"
+        />
+        <CitationsSection
+          subject="variants"
+          id={variantId}
+          fields={Object.keys(variant.details)}
+          title={`Sources for ${variant.details.name}`}
         />
       </div>
     </div>

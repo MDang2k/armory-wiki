@@ -54,7 +54,8 @@ export function MarkdownInput({ id, registration, invalid, value, rows = 6 }: Re
 }
 
 /** The admin list endpoints a picker can search; they all answer pages of `AdminEntityListItemDto`. */
-export type PickerResource = "countries" | "mechanisms" | "people" | "organizations" | "cartridges" | "tags" | "firearms";
+import type { PickerResource } from "@/lib/admin/resources";
+export type { PickerResource };
 
 /**
  * Picks an entity by slug (PLAN.md Phase 7): a text field with a native `<datalist>` of the ten best matches from

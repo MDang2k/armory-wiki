@@ -178,3 +178,15 @@ export function useDebounced<T>(value: T, ms = 300): T {
   }, [value, ms]);
   return settled;
 }
+
+/**
+ * Sets the tab title of a page whose name is only known in the browser (a generic resource page). Server
+ * metadata can't read the route here without making the page dynamic.
+ */
+export function useDocumentTitle(title: string | null) {
+  useEffect(() => {
+    if (title) {
+      document.title = `${title} · Admin · ArmoryWiki`;
+    }
+  }, [title]);
+}

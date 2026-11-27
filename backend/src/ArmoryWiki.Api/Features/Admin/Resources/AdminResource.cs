@@ -23,8 +23,10 @@ public sealed record AdminEntityDto<TInput>(
     IReadOnlyList<string> MissingForPublish,
     TInput Details);
 
+/// <summary>A row of an admin list; <see cref="Version"/> lets the row publish or unpublish without loading it.</summary>
 public sealed record AdminEntityListItemDto(
     int Id,
+    uint Version,
     string Slug,
     string Name,
     PublishStatus? Status,
@@ -164,7 +166,7 @@ internal static class AdminResource
         var entities = await Graph(db, spec).Where(e => ids.Contains(e.Id)).ToDictionaryAsync(e => e.Id, ct);
 
         var items = ids.Select(id => entities[id]).Select(e => new AdminEntityListItemDto(
-            e.Id, e.Slug, spec.NameOf(e), (e as IPublishable)?.Status, e.UpdatedAt, spec.MissingForPublish(e))).ToList();
+            e.Id, db.VersionOf(e), e.Slug, spec.NameOf(e), (e as IPublishable)?.Status, e.UpdatedAt, spec.MissingForPublish(e))).ToList();
         return TypedResults.Ok(new PagedResult<AdminEntityListItemDto>(items, p, size, total));
     }
 

@@ -7,7 +7,14 @@ import type { ReactNode } from "react";
 import { Notice, buttonClass } from "@/components/admin/ui";
 import { adminApi, forgetAntiforgeryToken } from "@/lib/admin/client";
 import { ApiProblem, unwrap } from "@/lib/admin/problems";
+import { RESOURCES } from "@/lib/admin/resources";
 import { LOGIN_PATH } from "@/lib/admin/returnTo";
+
+const NAV = [
+  { href: "/admin/firearms", label: "Firearms" },
+  ...Object.entries(RESOURCES).map(([route, spec]) => ({ href: `/admin/${route}`, label: spec.plural })),
+  { href: "/admin/sources", label: "Sources" },
+];
 
 /**
  * Checks the session (`/me`) before showing an admin page; a 401 is sent to login by the query client. The API
@@ -46,8 +53,12 @@ export function SessionGate({ children }: { children: ReactNode }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border pb-3 text-sm">
         <span className="font-semibold">Admin</span>
-        <nav aria-label="Admin" className="flex gap-4">
-          <Link href="/admin/firearms">Firearms</Link>
+        <nav aria-label="Admin" className="flex flex-wrap gap-x-4 gap-y-1">
+          {NAV.map((item) => (
+            <Link key={item.href} href={item.href}>
+              {item.label}
+            </Link>
+          ))}
         </nav>
         <span className="ml-auto text-muted">{me.data.email}</span>
         <button type="button" className={buttonClass} disabled={logout.isPending} onClick={() => logout.mutate()}>

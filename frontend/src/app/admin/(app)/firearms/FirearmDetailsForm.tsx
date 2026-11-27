@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { EntityPicker, FuzzyDateInput, LockToggle, MarkdownInput } from "@/components/admin/fields";
 import { Field, Notice, buttonClass, inputClass, primaryButtonClass, useUnsavedWarning } from "@/components/admin/ui";
@@ -31,6 +31,8 @@ export function FirearmDetailsForm({ firearm }: { firearm: Firearm | null }) {
   const { register, control, setError, reset, formState } = form;
   const values = useWatch({ control });
   const [notice, setNotice] = useState<{ conflict: boolean; text: string } | null>(null);
+  // Unique per form: Next keeps the previous page (the create form) hidden in the DOM, with the same field names.
+  const uid = useId();
   useUnsavedWarning(formState.isDirty);
 
   const showProblem = (error: unknown) => {
@@ -91,12 +93,12 @@ export function FirearmDetailsForm({ firearm }: { firearm: Firearm | null }) {
   const locked = new Set(firearm?.lockedFields ?? []);
   const field = (name: keyof FirearmFormValues, label: string) => ({
     label,
-    htmlFor: `firearm-${name}`,
+    htmlFor: `${uid}-${name}`,
     error: formState.errors[name]?.message,
     aside: locked.has(name) && <LockToggle field={name} onUnlock={(key) => unlock.mutate(key)} pending={unlock.isPending} />,
   });
   const input = (name: keyof FirearmFormValues) => ({
-    id: `firearm-${name}`,
+    id: `${uid}-${name}`,
     registration: register(name),
     invalid: formState.errors[name] !== undefined,
     value: values[name] ?? "",

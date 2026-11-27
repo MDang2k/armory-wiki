@@ -5692,6 +5692,8 @@ export interface components {
         AdminEntityListItemDto: {
             /** Format: int32 */
             id: number;
+            /** Format: uint32 */
+            version: number;
             slug: string;
             name: string;
             status: null | components["schemas"]["PublishStatus"];

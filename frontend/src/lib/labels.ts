@@ -45,6 +45,7 @@ export const MISSING_FOR_PUBLISH: Record<string, string> = {
   mechanism: "operating mechanism",
   primaryCartridge: "primary cartridge",
   primaryCartridgePublished: "primary cartridge is a draft",
+  type: "type",
 };
 
 export const FIRING_MODES: Record<Dto<"FiringModes">, string> = {

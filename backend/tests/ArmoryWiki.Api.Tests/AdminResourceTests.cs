@@ -114,12 +114,13 @@ public sealed class AdminResourceTests(DatabaseFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task Admin_lists_filter_by_status()
     {
-        await CreateAsync<PersonInput>("people", new { fullName = "Test Draft Person" });
+        var created = await CreateAsync<PersonInput>("people", new { fullName = "Test Draft Person" });
 
         var drafts = await _admin.GetFromJsonAsync<PagedResult<AdminEntityListItemDto>>("/api/admin/people?status=Draft", DatabaseFixture.Json);
 
-        Assert.Contains(drafts!.Items, i => i.Slug == "test-draft-person");
+        var row = Assert.Single(drafts!.Items, i => i.Slug == "test-draft-person");
         Assert.All(drafts.Items, i => Assert.Equal(PublishStatus.Draft, i.Status));
+        Assert.Equal(created.Version, row.Version); // so the row can publish without loading the person
     }
 
     // Organizations and cartridges ------------------------------------------------------------------------------
