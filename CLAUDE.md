@@ -85,8 +85,8 @@ Issues live in GitHub Issues, managed with the `gh` CLI. See `docs/agents/issue-
 
 ### Triage labels
 
-Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `C:/Users/minhd/home/docs/agents/triage-labels.md` (Home Repo).
 
 ### Domain docs
 
-Single-context: one `GLOSSARY.md` + `docs/adr/` at repo root. See `docs/agents/domain.md`.
+Single-context: one `GLOSSARY.md` + `docs/adr/` at repo root. See `C:/Users/minhd/home/docs/agents/domain.md` (Home Repo).
