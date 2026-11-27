@@ -10,6 +10,7 @@ import { settle } from "@/lib/api/settle";
 import type { Dto } from "@/lib/api/types";
 import { footnotes, type Footnotes } from "@/lib/citations";
 import { formatFuzzyDate, type FuzzyDate } from "@/lib/dates";
+import { FEED_SYSTEMS } from "@/lib/labels";
 import { wikipediaUrl } from "@/lib/wikipedia";
 import { VariantSpecs } from "./VariantSpecs";
 import { VideoList } from "./VideoList";
@@ -122,19 +123,6 @@ const ROLES: Record<Dto<"DesignerRole">, string> = {
   Developer: "developer",
 };
 
-const FEED: Record<NonNullable<Dto<"FeedSystem">>, string> = {
-  DetachableBoxMagazine: "Detachable box magazine",
-  InternalMagazine: "Internal magazine",
-  Belt: "Belt",
-  Drum: "Drum magazine",
-  Tubular: "Tubular magazine",
-  Cylinder: "Revolving cylinder",
-  StripperClip: "Stripper clip",
-  EnBlocClip: "En-bloc clip",
-  SingleShot: "Single shot",
-  Other: "Other",
-};
-
 const span = (from: FuzzyDate | null, to: FuzzyDate | null) =>
   from && to ? `${formatFuzzyDate(from)} – ${formatFuzzyDate(to)}` : from ? `from ${formatFuzzyDate(from)}` : to ? `until ${formatFuzzyDate(to)}` : null;
 
@@ -189,7 +177,7 @@ function Infobox({ firearm: f, lead, notes }: { firearm: Firearm; lead?: Dto<"Im
     ],
     ["Produced", span(f.productionStart, f.productionEnd), "productionStart"],
     ["Operating mechanism", f.mechanism && <Link href={`/mechanisms/${f.mechanism.slug}`}>{f.mechanism.name}</Link>, "mechanism"],
-    ["Feed", f.feedSystem && FEED[f.feedSystem], "feedSystem"],
+    ["Feed", f.feedSystem && FEED_SYSTEMS[f.feedSystem], "feedSystem"],
     ["Era", tags("Era"), ""],
   ];
   const marks: Record<string, number[]> = {};

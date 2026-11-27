@@ -64,7 +64,10 @@ public sealed class AdminFirearmTests(DatabaseFixture fixture) : IAsyncLifetime
     private static FirearmInput Core(AdminFirearmDto f) => f.Details;
 
     /// <summary>Fills every publish requirement with seeded references, then publishes.</summary>
-    private async Task<AdminFirearmDto> PublishAsync(AdminFirearmDto f)
+    private async Task<AdminFirearmDto> PublishAsync(AdminFirearmDto f) => await ReadAsync(await PostAsync(await MakeReadyAsync(f), "/publish"));
+
+    /// <summary>Fills in every publish requirement.</summary>
+    private async Task<AdminFirearmDto> MakeReadyAsync(AdminFirearmDto f)
     {
         f = await ReadAsync(await PutAsync(f, "", Core(f) with
         {
@@ -73,8 +76,7 @@ public sealed class AdminFirearmTests(DatabaseFixture fixture) : IAsyncLifetime
             Mechanism = "gas-operated",
         }));
         var baseVariant = f.Variants.Single(v => v.IsBaseVariant);
-        f = await ReadAsync(await PutAsync(f, $"/variants/{baseVariant.Id}/chamberings", new ChamberingsInput([new("7-62x39mm", true)])));
-        return await ReadAsync(await PostAsync(f, "/publish"));
+        return await ReadAsync(await PutAsync(f, $"/variants/{baseVariant.Id}/chamberings", new ChamberingsInput([new("7-62x39mm", true)])));
     }
 
     // Auth and CSRF ---------------------------------------------------------------------------------------------
@@ -355,12 +357,36 @@ public sealed class AdminFirearmTests(DatabaseFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task Admin_list_includes_drafts_with_what_blocks_publishing()
     {
-        await CreateAsync(new { name = "Queue Probe" });
+        var created = await CreateAsync(new { name = "Queue Probe", wikidataId = "Q99999991" });
 
         var page = await _admin.GetFromJsonAsync<PagedResult<AdminFirearmListItemDto>>($"{Firearms}?status=Draft&q=queue", DatabaseFixture.Json);
 
         var item = Assert.Single(page!.Items);
         Assert.Equal("queue-probe", item.Slug);
+        Assert.Equal("Q99999991", item.WikidataId);
         Assert.Contains("mechanism", item.MissingForPublish);
+
+        // The row's version publishes without loading the firearm first.
+        Assert.Equal(created.Version, item.Version);
+        var publish = await _admin.PostAsync($"{Firearms}/{item.Id}/publish?version={item.Version}", null);
+        Assert.Equal(HttpStatusCode.BadRequest, publish.StatusCode); // a version mismatch would answer 409
+    }
+
+    [Fact]
+    public async Task Ready_filter_lists_exactly_the_firearms_with_nothing_missing()
+    {
+        await MakeReadyAsync(await CreateAsync(new { name = "Ready Probe Done" }));
+        await CreateAsync(new { name = "Ready Probe Not" });
+
+        var ready = await _admin.GetFromJsonAsync<PagedResult<AdminFirearmListItemDto>>($"{Firearms}?status=Draft&ready=true&q=ready-probe", DatabaseFixture.Json);
+        Assert.Equal("ready-probe-done", Assert.Single(ready!.Items).Slug);
+
+        // The query and MissingForPublish are two copies of one rule: they must agree on every firearm.
+        var all = await _admin.GetFromJsonAsync<PagedResult<AdminFirearmListItemDto>>($"{Firearms}?pageSize=100", DatabaseFixture.Json);
+        var allReady = await _admin.GetFromJsonAsync<PagedResult<AdminFirearmListItemDto>>($"{Firearms}?ready=true&pageSize=100", DatabaseFixture.Json);
+        Assert.True(all!.TotalCount <= 100, "the check reads one page");
+        Assert.Equal(
+            all.Items.Where(i => i.MissingForPublish.Count == 0).Select(i => i.Id).Order(),
+            allReady!.Items.Select(i => i.Id).Order());
     }
 }

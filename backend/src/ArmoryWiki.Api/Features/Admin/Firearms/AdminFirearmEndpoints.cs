@@ -39,12 +39,18 @@ public static class AdminFirearmEndpoints
             .ProducesProblem(StatusCodes.Status409Conflict);
 
     private static async Task<Results<Ok<PagedResult<AdminFirearmListItemDto>>, ProblemHttpResult>> List(
-        PublishStatus? status, string? q, string? sort, int? page, int? pageSize, ArmoryWikiDbContext db, CancellationToken ct)
+        PublishStatus? status, bool? ready, string? q, string? sort, int? page, int? pageSize, ArmoryWikiDbContext db, CancellationToken ct)
     {
         var query = db.Firearms.IgnoreQueryFilters();
         if (status is { } s)
         {
             query = query.Where(f => f.Status == s);
+        }
+
+        // ponytail: ready=true only (the draft queue's "ready to publish"); add ready=false when something needs it.
+        if (ready is true)
+        {
+            query = query.Where(FirearmEditing.ReadyToPublish);
         }
 
         var search = new FirearmQuery { Q = q };
@@ -69,7 +75,7 @@ public static class AdminFirearmEndpoints
         // Load the page's firearms whole, so "missing for publish" comes from the one rule that publish enforces.
         var firearms = await db.AdminGraph().Where(f => ids.Contains(f.Id)).ToDictionaryAsync(f => f.Id, ct);
         var items = ids.Select(id => firearms[id])
-            .Select(f => new AdminFirearmListItemDto(f.Id, f.Slug, f.Name, f.Status, f.UpdatedAt, f.MissingForPublish()))
+            .Select(f => new AdminFirearmListItemDto(f.Id, db.VersionOf(f), f.Slug, f.Name, f.WikidataId, f.Status, f.UpdatedAt, f.MissingForPublish()))
             .ToList();
 
         return TypedResults.Ok(new PagedResult<AdminFirearmListItemDto>(items, p, size, total));

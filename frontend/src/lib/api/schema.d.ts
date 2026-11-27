@@ -909,6 +909,7 @@ export interface paths {
             parameters: {
                 query?: {
                     status?: components["schemas"]["PublishStatus"];
+                    ready?: boolean;
                     q?: string;
                     sort?: string;
                     page?: number;
@@ -5719,8 +5720,11 @@ export interface components {
         AdminFirearmListItemDto: {
             /** Format: int32 */
             id: number;
+            /** Format: uint32 */
+            version: number;
             slug: string;
             name: string;
+            wikidataId: null | string;
             status: components["schemas"]["PublishStatus"];
             /** Format: date-time */
             updatedAt: string;

@@ -58,7 +58,9 @@ public static class AdminAuth
         {
             o.HeaderName = AntiforgeryHeader;
             o.Cookie.Name = "armorywiki.antiforgery";
-            o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            // Always over HTTPS in production (Caddy). In development the API is plain HTTP behind the Next proxy,
+            // and antiforgery throws on a non-HTTPS request when the policy is Always.
+            o.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
             o.Cookie.SameSite = SameSiteMode.Strict;
         });
 

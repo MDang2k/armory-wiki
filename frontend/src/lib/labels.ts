@@ -24,3 +24,25 @@ export const CARTRIDGE_TYPES: Record<NonNullable<Dto<"CartridgeType">>, string> 
   Rimfire: "Rimfire",
   Other: "Other",
 };
+
+export const FEED_SYSTEMS: Record<NonNullable<Dto<"FeedSystem">>, string> = {
+  DetachableBoxMagazine: "Detachable box magazine",
+  InternalMagazine: "Internal magazine",
+  Belt: "Belt",
+  Drum: "Drum magazine",
+  Tubular: "Tubular magazine",
+  Cylinder: "Revolving cylinder",
+  StripperClip: "Stripper clip",
+  EnBlocClip: "En-bloc clip",
+  SingleShot: "Single shot",
+  Other: "Other",
+};
+
+/** The API's "missing for publish" keys (input field names), as the admin reads them. Unknown keys show as-is. */
+export const MISSING_FOR_PUBLISH: Record<string, string> = {
+  country: "country of origin",
+  designDate: "design date",
+  mechanism: "operating mechanism",
+  primaryCartridge: "primary cartridge",
+  primaryCartridgePublished: "primary cartridge is a draft",
+};

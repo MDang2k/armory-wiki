@@ -67,7 +67,7 @@ Backend:
 
 Frontend:
 - Server Components by default; `"use client"` only where interactivity is needed.
-- No `any`. API types come only from the generated OpenAPI schema (`Dto<"FirearmDetailDto">`); call the API through `src/lib/api/client.ts` from cached loaders that return `Loaded<T>`, and settle it in the page (`settle()`: 404 or permanent redirect).
+- No `any`. API types come only from the generated OpenAPI schema (`Dto<"FirearmDetailDto">`); call the API through `src/lib/api/client.ts` from cached loaders that return `Loaded<T>`, and settle it in the page (`settle()`: 404 or permanent redirect). Admin pages (`/admin`) are the exception: client components calling `src/lib/admin/client.ts` from the browser through TanStack Query.
 - Every cached loader tags the entity it shows (`firearm:<slug>`), each entity type it embeds (`firearms`, `people`, `organizations`, `cartridges`, `mechanisms`, `reference`) and `all`; the API expires those after admin writes.
 - Never read cookies or headers in public pages (keeps them static).
 

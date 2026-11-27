@@ -137,7 +137,9 @@ app.MapGet("/healthz", async (ArmoryWikiDbContext db, CancellationToken ct) =>
     .ExcludeFromDescription();
 
 // Server-side fetches are cached by Next.js; only endpoints the browser calls directly opt into public caching.
-var api = app.MapGroup("/api").WithCacheControl("no-store");
+// "no-cache, no-store" rather than "no-store" alone: it is the exact value antiforgery sets, so admin writes don't
+// log a warning each time it overrides ours.
+var api = app.MapGroup("/api").WithCacheControl("no-cache, no-store");
 api.MapFirearms();
 api.MapPeople();
 api.MapOrganizations();

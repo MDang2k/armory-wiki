@@ -87,10 +87,13 @@ public sealed record AdminFirearmDto(
     IReadOnlyList<RelationInput> Relations,
     IReadOnlyList<AdoptionInput> Adoptions);
 
+/// <summary>A row of the admin list; <see cref="Version"/> lets the row publish or unpublish without loading the firearm.</summary>
 public sealed record AdminFirearmListItemDto(
     int Id,
+    uint Version,
     string Slug,
     string Name,
+    string? WikidataId,
     PublishStatus Status,
     DateTime UpdatedAt,
     IReadOnlyList<string> MissingForPublish);

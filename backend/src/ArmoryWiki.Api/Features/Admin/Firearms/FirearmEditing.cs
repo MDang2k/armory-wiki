@@ -1,6 +1,7 @@
 using ArmoryWiki.Api.Common;
 using ArmoryWiki.Domain;
 using ArmoryWiki.Infrastructure.Persistence;
+using System.Linq.Expressions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -174,6 +175,17 @@ internal static class FirearmEditing
         v.MagazineCapacityStandard,
         Enum.GetValues<FiringModes>().Where(m => m != FiringModes.None && v.FiringModes.HasFlag(m)).ToList(),
         v.ExtraSpecs);
+
+    /// <summary>
+    /// <see cref="MissingForPublish"/> as a query, for the "ready to publish" filter. Keep the two in step: a test
+    /// checks that every firearm this matches has nothing missing, and every other one has something.
+    /// </summary>
+    public static readonly Expression<Func<Firearm, bool>> ReadyToPublish = f =>
+        f.CountryOfOriginId != null
+        && f.DesignDate != null
+        && f.OperatingMechanismId != null
+        && f.Variants.Any(v => v.IsBaseVariant
+            && v.Chamberings.Any(c => c.IsPrimary && c.Cartridge.Status == PublishStatus.Published));
 
     /// <summary>Unmet publish requirements (GLOSSARY.md), named after the input fields an admin must fill.</summary>
     public static List<string> MissingForPublish(this Firearm f)

@@ -458,7 +458,7 @@ Next's data cache stays in the frontend container's memory: a deploy or restart 
 ### Phase 7: Admin UI
 Built in five slices (7a–7e), each tested, reviewed and committed on its own. Decisions that hold for all of them:
 
-- `/admin` lives in the same Next app: thin Server Component shells (`noindex`) around client components that call the API from the browser through `src/lib/api/client.ts`. The browser sends the admin cookie itself (`/api` is same-origin: Caddy in production, the Next proxy in dev); public pages stay static and untouched
+- `/admin` lives in the same Next app: thin Server Component shells (`noindex`) around client components that call the API from the browser through `src/lib/admin/client.ts` (relative URLs, antiforgery token on writes). The browser sends the admin cookie itself (`/api` is same-origin: Caddy in production, the Next proxy in dev); public pages stay static and untouched
 - TanStack Query for loading and invalidating after writes. react-hook-form + zod: schemas written by hand and typed against the generated input DTOs (drift fails `tsc`); zod checks shape and required fields only, and the API's `ValidationProblem` errors are mapped onto the fields by one shared helper, so publish requirements, slug rules and ranges stay in the API
 - A 409 (stale `?version=`) shows "Changed elsewhere since you opened it" with a Reload button; the unsaved input stays on screen until the admin chooses. No merge view
 - Login at `/admin/login?returnTo=`; the admin layout checks `/me`, any 401 goes to login and back; logout in the header. The antiforgery token is fetched after login, kept in memory, and refetched once (with one retry of the write) if the API rejects it
@@ -470,9 +470,9 @@ Built in five slices (7a–7e), each tested, reviewed and committed on its own. 
 - Tests: Vitest for `lib/` (zod schemas, server-error mapping, FuzzyDate parsing), an integration test for every new endpoint; no browser tests. "Done when" is checked by clicking through the running site
 
 **7a: shell, firearm list and details**
-- [ ] Admin layout, login, logout, session and antiforgery handling; the shared building blocks above
-- [ ] Firearm list doubling as the draft queue: status filter defaulting to Draft, search, columns name, Wikidata link, updated and "missing for publish", a "ready to publish" filter; publish and unpublish per row, publish disabled while anything is missing. No bulk publish
-- [ ] Create a firearm; the firearm details form (names, dates, country, mechanism, prose)
+- [x] Admin layout, login, logout, session and antiforgery handling; the shared building blocks above. In development the antiforgery cookie follows the request scheme (the API is plain HTTP behind the Next proxy); production keeps it HTTPS-only
+- [x] Firearm list doubling as the draft queue: status filter defaulting to Draft, search, columns name, Wikidata link, updated and "missing for publish", a "ready to publish" filter (`?ready=true` on the admin list, a query kept in step with the publish rule by a test); publish and unpublish per row (list rows carry their version), publish disabled while anything is missing. No bulk publish
+- [x] Create a firearm; the firearm details form (names, dates, country, mechanism, prose). Checked by clicking through: signed-out redirect and back, a failed login, create with a client-side date error, an unknown mechanism reported on its field, save, unlock, a stale version kept on screen then reloaded, unpublish and publish from the list, delete
 
 **7b: the rest of the firearm editor**
 - [ ] One page of sections, each with its own Save and unsaved marker (mirroring the API's separate writes), and a warning before leaving with unsaved sections: variants (add, edit, make base, delete) with their chamberings, tags, designers, manufacturers, adoptions, relations

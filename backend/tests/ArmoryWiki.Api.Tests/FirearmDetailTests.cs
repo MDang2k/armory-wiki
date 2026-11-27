@@ -41,7 +41,7 @@ public sealed class FirearmDetailTests(DatabaseFixture fixture)
         using var client = fixture.Client();
         var response = await client.GetAsync("/api/firearms/ak-47");
 
-        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        Assert.True(response.Headers.CacheControl is { NoStore: true }, $"Cache-Control: {response.Headers.CacheControl}");
     }
 
     [Fact]
