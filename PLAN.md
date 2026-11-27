@@ -456,12 +456,39 @@ Next's data cache stays in the frontend container's memory: a deploy or restart 
 **Done when:** the site is live on its domain over HTTPS, a push to `main` deploys automatically, and a backup has been restored into a scratch DB successfully.
 
 ### Phase 7: Admin UI
-- [ ] `/admin` routes: login, list + edit forms for all entities (react-hook-form + zod), Markdown editor for prose fields, a `FuzzyDate` input component, tag picker
-- [ ] Draft queue with "missing for publish" column and a publish button
-- [ ] Image upload with required license/author/source fields
-- [ ] Source + citation editor
-- [ ] Video suggestion review screen (approve/reject)
-- [ ] **Merge into variant** tool: turn an imported Firearm (e.g. M4A1) into a Variant of another (M4), moving chamberings and specs, writing a `SlugRedirect`, and deleting the old firearm
+Built in five slices (7a–7e), each tested, reviewed and committed on its own. Decisions that hold for all of them:
+
+- `/admin` lives in the same Next app: thin Server Component shells (`noindex`) around client components that call the API from the browser through `src/lib/api/client.ts`. The browser sends the admin cookie itself (`/api` is same-origin: Caddy in production, the Next proxy in dev); public pages stay static and untouched
+- TanStack Query for loading and invalidating after writes. react-hook-form + zod: schemas written by hand and typed against the generated input DTOs (drift fails `tsc`); zod checks shape and required fields only, and the API's `ValidationProblem` errors are mapped onto the fields by one shared helper, so publish requirements, slug rules and ranges stay in the API
+- A 409 (stale `?version=`) shows "Changed elsewhere since you opened it" with a Reload button; the unsaved input stays on screen until the admin chooses. No merge view
+- Login at `/admin/login?returnTo=`; the admin layout checks `/me`, any 401 goes to login and back; logout in the header. The antiforgery token is fetched after login, kept in memory, and refetched once (with one retry of the write) if the API rejects it
+- Tailwind and native elements (`<dialog>` confirmations for delete, unpublish and merge; `<details>`), no component library. Metric-only inputs labelled with their unit
+- Markdown fields: a textarea with Write/Preview tabs, the preview rendered by the same `react-markdown` setup as the public pages
+- `FuzzyDate` input: one text field parsed as you type (`1942`, `1942-03`, `1942-03-15`, `1940s`, `1942–1944` with `-` or `–`, a `c.` prefix), showing its interpretation ("circa 1940s") or an error; the parser lives in `lib/`
+- Locked fields show a lock icon with Unlock (`DELETE …/locks/{key}`), so the admin sees why an import no longer updates them
+- Related entities are picked with one shared autocomplete over the admin list endpoints (`?q=`, debounced, top 10, Draft/Published badge; drafts allowed: the publish requirements decide). A missing entity is created from a "New …" link that opens its form in a new tab, never inline
+- Tests: Vitest for `lib/` (zod schemas, server-error mapping, FuzzyDate parsing), an integration test for every new endpoint; no browser tests. "Done when" is checked by clicking through the running site
+
+**7a: shell, firearm list and details**
+- [ ] Admin layout, login, logout, session and antiforgery handling; the shared building blocks above
+- [ ] Firearm list doubling as the draft queue: status filter defaulting to Draft, search, columns name, Wikidata link, updated and "missing for publish", a "ready to publish" filter; publish and unpublish per row, publish disabled while anything is missing. No bulk publish
+- [ ] Create a firearm; the firearm details form (names, dates, country, mechanism, prose)
+
+**7b: the rest of the firearm editor**
+- [ ] One page of sections, each with its own Save and unsaved marker (mirroring the API's separate writes), and a warning before leaving with unsaved sections: variants (add, edit, make base, delete) with their chamberings, tags, designers, manufacturers, adoptions, relations
+
+**7c: other entities and sources**
+- [ ] List and edit forms for people, organizations, cartridges, countries, tags and mechanisms (publish where they have it)
+- [ ] Sources, and citations on every entity that takes them
+
+**7d: images and videos**
+- [ ] Image upload, one file at a time (drag-drop or picker): type and size checked in the browser against the API's limits, license (from the API's options), author and source URL required, caption optional, a preview; edit details, reorder and delete afterwards
+- [ ] `GET /api/admin/videos?status=Suggested` (paged, with each video's firearm name and slug) and a review screen that approves or rejects across all firearms
+
+**7e: merge into variant** ([ADR-0007](docs/adr/0007-variants-carry-wikidata-qids.md))
+- [ ] `Variant.WikidataId` (optional, unique; a QID is unique across firearms and variants), and the Wikidata importer treats a QID held by a variant as known and reports it as merged
+- [ ] `POST /api/admin/firearms/{id}/merge-into/{targetId}`, drafts only, in one transaction: the source's base variant specs and chamberings become a new variant of the target carrying the source's QID; images, citations and videos move to the target; designers, manufacturers, adoptions and tags join the target's (duplicates dropped); relations from other firearms are re-pointed to the target (self-relations and duplicates dropped); the source's prose is discarded; a `SlugRedirect` sends the old slug to the target; the source is deleted
+- [ ] The merge screen: pick the target, preview what moves and what is dropped, confirm
 
 **Done when:** an admin can create a complete firearm page with images and citations, and review imported drafts, entirely through the UI.
 

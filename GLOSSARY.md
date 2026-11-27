@@ -168,3 +168,7 @@ _Avoid_: protected field, override
 **Import**:
 Bringing facts from an outside source (Wikidata, Wikimedia Commons, Wikipedia, YouTube) into the encyclopedia, matched by the source's own identifier. An import creates drafts, refreshes unlocked fields of drafts and only fills empty fields of published content. It never publishes, unpublishes or deletes anything; what disappeared from the source is reported for an admin instead.
 _Avoid_: sync, scrape
+
+**Merge into variant**:
+Turning a draft firearm into a variant of another firearm, when it turns out to be a changed version of that design rather than a design of its own (M4A1 into the M4). Its specifications and ammunition become the new variant's; its images, sources, videos, people, organizations and tags join the other firearm; its old address leads to the other firearm, and imports recognise it as that variant from then on.
+_Avoid_: combine, fold, absorb
