@@ -76,8 +76,72 @@ public sealed class FirearmDetailTests(DatabaseFixture fixture)
         Assert.Equal(["ar-10", "ar-15", "m16", "m4-carbine"], tree.Nodes.Select(n => n.Slug).Order());
         Assert.Equal("m16", tree.Nodes.Single(n => n.IsRoot).Slug);
         Assert.Equal(
-            [new FamilyTreeEdgeDto("ar-10", "ar-15"), new FamilyTreeEdgeDto("ar-15", "m16"), new FamilyTreeEdgeDto("m16", "m4-carbine")],
+            [new FamilyTreeEdgeDto("ar-10", "ar-15", false), new FamilyTreeEdgeDto("ar-15", "m16", false), new FamilyTreeEdgeDto("m16", "m4-carbine", false)],
             tree.Edges);
+        Assert.False(tree.Truncated);
+    }
+
+    [Fact]
+    public async Task Family_tree_includes_copies_and_stops_at_150_firearms_nearest_first()
+    {
+        // A root with one copy and 200 derivatives: the copy is kept and marked, and the family is cut at 150.
+        // Tests in this collection run one at a time, so these published rows are invisible to the others.
+        await using var db = fixture.NewDbContext();
+        var root = new Firearm { Slug = "big-family", Name = "Big Family", Status = PublishStatus.Published };
+        var copy = new Firearm { Slug = "big-family-copy", Name = "Big Family Copy", Status = PublishStatus.Published };
+        var children = Enumerable.Range(1, 200)
+            .Select(i => new Firearm { Slug = $"big-family-{i}", Name = $"Big Family {i}", Status = PublishStatus.Published }).ToList();
+        db.Firearms.AddRange([root, copy, .. children]);
+        db.FirearmRelations.Add(new FirearmRelation { FromFirearm = copy, ToFirearm = root, Type = RelationType.CopyOf });
+        db.FirearmRelations.AddRange(children.Select(c => new FirearmRelation { FromFirearm = c, ToFirearm = root, Type = RelationType.DerivedFrom }));
+        // A grandchild of the first derivative: two steps away, so it never beats a direct derivative to the cut.
+        var grandchild = new Firearm { Slug = "big-family-grandchild", Name = "Big Family Grandchild", Status = PublishStatus.Published };
+        db.Firearms.Add(grandchild);
+        db.FirearmRelations.Add(new FirearmRelation { FromFirearm = grandchild, ToFirearm = children[0], Type = RelationType.DerivedFrom });
+        await db.SaveChangesAsync();
+        try
+        {
+            var tree = await fixture.GetJsonAsync<FamilyTreeDto>("/api/firearms/big-family/family-tree?depth=2");
+
+            Assert.True(tree.Truncated);
+            Assert.Equal(150, tree.Nodes.Count);
+            Assert.DoesNotContain(tree.Nodes, n => n.Slug == "big-family-grandchild");
+            Assert.All(tree.Edges, e => Assert.Contains(tree.Nodes, n => n.Slug == e.Target));
+            if (tree.Edges.SingleOrDefault(e => e.Target == "big-family-copy") is { } copyEdge)
+            {
+                Assert.True(copyEdge.IsCopy);
+            }
+
+            Assert.All(tree.Edges.Where(e => e.Target != "big-family-copy"), e => Assert.False(e.IsCopy));
+        }
+        finally
+        {
+            db.FirearmRelations.RemoveRange(db.FirearmRelations.Local.ToList());
+            db.Firearms.RemoveRange([root, copy, grandchild, .. children]);
+            await db.SaveChangesAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Family_tree_marks_copies()
+    {
+        await using var db = fixture.NewDbContext();
+        var original = new Firearm { Slug = "copy-original", Name = "Copy Original", Status = PublishStatus.Published };
+        var licensed = new Firearm { Slug = "copy-licensed", Name = "Copy Licensed", Status = PublishStatus.Published };
+        db.Firearms.AddRange(original, licensed);
+        db.FirearmRelations.Add(new FirearmRelation { FromFirearm = licensed, ToFirearm = original, Type = RelationType.CopyOf });
+        await db.SaveChangesAsync();
+        try
+        {
+            var tree = await fixture.GetJsonAsync<FamilyTreeDto>("/api/firearms/copy-licensed/family-tree");
+
+            Assert.Equal([new FamilyTreeEdgeDto("copy-original", "copy-licensed", true)], tree.Edges);
+        }
+        finally
+        {
+            db.Firearms.RemoveRange(original, licensed);
+            await db.SaveChangesAsync();
+        }
     }
 
     [Fact]

@@ -104,9 +104,10 @@ public sealed record FirearmFacetsDto(
 
 public sealed record FamilyTreeNodeDto(string Slug, string Name, FuzzyDateDto? DesignDate, bool IsRoot);
 
-/// <summary><see cref="Target"/> is derived from <see cref="Source"/>.</summary>
-public sealed record FamilyTreeEdgeDto(string Source, string Target);
+/// <summary><see cref="Target"/> is derived from <see cref="Source"/>, or a copy of it when <see cref="IsCopy"/>.</summary>
+public sealed record FamilyTreeEdgeDto(string Source, string Target, bool IsCopy);
 
-public sealed record FamilyTreeDto(IReadOnlyList<FamilyTreeNodeDto> Nodes, IReadOnlyList<FamilyTreeEdgeDto> Edges);
+/// <summary><see cref="Truncated"/>: the family is larger than the nodes returned (the nearest ones are kept).</summary>
+public sealed record FamilyTreeDto(IReadOnlyList<FamilyTreeNodeDto> Nodes, IReadOnlyList<FamilyTreeEdgeDto> Edges, bool Truncated);
 
 public sealed record CompareItemDto(string Slug, string Name, string VariantName, SlugName? PrimaryCartridge, SpecsDto Specs);

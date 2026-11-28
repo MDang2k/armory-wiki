@@ -6097,10 +6097,12 @@ export interface components {
         FamilyTreeDto: {
             nodes: components["schemas"]["FamilyTreeNodeDto"][];
             edges: components["schemas"]["FamilyTreeEdgeDto"][];
+            truncated: boolean;
         };
         FamilyTreeEdgeDto: {
             source: string;
             target: string;
+            isCopy: boolean;
         };
         FamilyTreeNodeDto: {
             slug: string;

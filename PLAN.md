@@ -496,9 +496,9 @@ Built in five slices (7a–7e), each tested, reviewed and committed on its own. 
 Built in three slices (8a–8c), each tested, reviewed and committed on its own. Tests: Vitest for the pure parts (lane packing, row differences, layout helpers), an integration test for each API change; the pages are checked by clicking through.
 
 **8a: family tree** (GLOSSARY.md: *family tree*)
-- [ ] The family-tree API follows *copy of* as well as *derived from* (each edge says which), and stops at 150 nodes, nearest first, with `truncated: true`
-- [ ] `/firearms/[slug]/family-tree`: a server shell with a cached loader and a React Flow (`@xyflow/react`) client island, dagre (`@dagrejs/dagre`) top-to-bottom; copies drawn dashed; the root highlighted; each node shows name and design year and opens that firearm; a depth control (1–5, default 3) in the URL; "showing the nearest 150; reduce the depth" when truncated; a plain nested list of the same family under the graph (screen readers, no JavaScript)
-- [ ] The "Family tree" link on firearm pages only when the firearm has lineage relations
+- [x] The family-tree API follows *copy of* as well as *derived from* (each edge says which), and stops at 150 nodes, nearest first, with `truncated: true` (tested: copies marked, a 200-derivative family cut at 150 nearest first)
+- [x] `/firearms/[slug]/family-tree`: a server shell with a cached loader and a React Flow (`@xyflow/react`) client island, dagre (`@dagrejs/dagre`) top-to-bottom; copies drawn dashed; the root highlighted; each node shows name and design year and opens that firearm; a depth control (1–5, default 3) in the URL; "showing the nearest 150; reduce the depth" when truncated; a plain nested list of the same family under the graph (screen readers, no JavaScript). The layout runs on the server, so dagre never ships to the browser; nodes take the site's colours through React Flow's CSS variables
+- [x] The "Family tree" link on firearm pages only when the firearm has lineage relations
 
 **8b: timeline**
 - [ ] `/api/timeline` answers `{ items, total }` with at most 500 items

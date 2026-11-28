@@ -65,6 +65,12 @@ async function FirearmArticle({ params }: { params: PageProps<"/firearms/[slug]"
         <Infobox firearm={f} lead={lead} notes={notes} />
         <p className="text-sm">
           <Link href={`/compare?slugs=${encodeURIComponent(f.slug)}`}>Compare with other firearms</Link>
+          {hasLineage(f) && (
+            <>
+              {" · "}
+              <Link href={`/firearms/${f.slug}/family-tree`}>Family tree</Link>
+            </>
+          )}
         </p>
 
         {f.developmentHistory && (
@@ -258,6 +264,10 @@ const TO: Record<Dto<"RelationType">, string> = {
   CompetedAgainst: "Competed against",
   Replaced: "Replaced by",
 };
+
+/** Whether the firearm has a family tree to show (GLOSSARY.md: derived from or copy of, either way). */
+const hasLineage = (f: Firearm) =>
+  [...f.relationsFrom, ...f.relationsTo].some((r) => r.type === "DerivedFrom" || r.type === "CopyOf");
 
 function Related({ firearm: f }: { firearm: Firearm }) {
   const groups = new Map<string, Dto<"SlugName">[]>();

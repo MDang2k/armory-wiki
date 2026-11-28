@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { api, toLoaded } from "./client";
+import { api, toLoaded, type Loaded } from "./client";
+import type { Dto } from "./types";
 import { parseFilters, toApiQuery } from "../filters";
 
 /**
@@ -162,4 +163,25 @@ export async function loadSitemapPaths() {
     loadMechanismTree(),
   ]);
   return [...firearms, ...people, ...organizations, ...cartridges, ...flatten(mechanisms)];
+}
+
+/**
+ * A firearm's family tree (GLOSSARY.md). A renamed slug answers 301 to /api/firearms/<current>/family-tree, so the
+ * current slug is the segment before "family-tree", not the last one.
+ */
+export async function loadFamilyTree(slug: string, depth: number): Promise<Loaded<Dto<"FamilyTreeDto">>> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`firearm:${slug}`, "firearms", "all");
+  const result = await api.GET("/api/firearms/{slug}/family-tree", { params: { path: { slug }, query: { depth } } });
+  if (result.response.status === 301) {
+    const current = decodeURIComponent(result.response.headers.get("location")?.split("/").at(-2) ?? "");
+    if (!current) {
+      throw new Error(`API 301 without a Location for ${result.response.url}`);
+    }
+
+    return { status: "moved", slug: current };
+  }
+
+  return toLoaded(result);
 }

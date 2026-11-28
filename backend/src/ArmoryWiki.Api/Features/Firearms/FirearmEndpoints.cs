@@ -13,6 +13,7 @@ public static class FirearmEndpoints
     private const string Route = "/api/firearms";
     private const int MaxCompared = 4;
     private const int MaxTreeDepth = 5;
+    private const int MaxTreeNodes = 150;
 
     public static void MapFirearms(this RouteGroupBuilder api)
     {
@@ -206,8 +207,9 @@ public static class FirearmEndpoints
     }
 
     /// <summary>
-    /// The DerivedFrom neighbourhood of a firearm, walked in both directions up to <paramref name="depth"/> steps.
-    /// Keeps a visited set because imported relations may contain cycles.
+    /// The family tree of a firearm (GLOSSARY.md): its DerivedFrom and CopyOf neighbourhood, walked in both directions
+    /// up to <paramref name="depth"/> steps, nearest first, and at most <see cref="MaxTreeNodes"/> firearms. Keeps a
+    /// visited set because imported relations may contain cycles.
     /// </summary>
     private static async Task<Results<Ok<FamilyTreeDto>, RedirectHttpResult, ProblemHttpResult>> FamilyTree(
         string slug, int? depth, ArmoryWikiDbContext db, CancellationToken ct)
@@ -224,25 +226,36 @@ public static class FirearmEndpoints
         }
 
         var visited = new HashSet<int> { root };
-        var edges = new HashSet<(int Parent, int Child)>();
+        var edges = new Dictionary<(int Parent, int Child), bool>(); // value: is a copy
         var frontier = new List<int> { root };
-        for (var step = 0; step < Math.Clamp(depth ?? 3, 1, MaxTreeDepth) && frontier.Count > 0; step++)
+        var truncated = false;
+        for (var step = 0; step < Math.Clamp(depth ?? 3, 1, MaxTreeDepth) && frontier.Count > 0 && !truncated; step++)
         {
             var current = frontier;
             var links = await db.FirearmRelations
-                .Where(r => r.Type == RelationType.DerivedFrom
+                .Where(r => (r.Type == RelationType.DerivedFrom || r.Type == RelationType.CopyOf)
                     && (current.Contains(r.FromFirearmId) || current.Contains(r.ToFirearmId)))
-                .Select(r => new { Parent = r.ToFirearmId, Child = r.FromFirearmId })
+                .Select(r => new { Parent = r.ToFirearmId, Child = r.FromFirearmId, IsCopy = r.Type == RelationType.CopyOf })
                 .ToListAsync(ct);
 
             frontier = [];
-            foreach (var link in links)
+            // A stable order, so which firearms make the cut does not change between requests.
+            foreach (var link in links.OrderBy(l => l.Parent).ThenBy(l => l.Child))
             {
-                edges.Add((link.Parent, link.Child));
-                foreach (var id in new[] { link.Parent, link.Child }.Where(visited.Add))
+                foreach (var id in new[] { link.Parent, link.Child }.Where(id => !visited.Contains(id)))
                 {
+                    if (visited.Count >= MaxTreeNodes)
+                    {
+                        truncated = true;
+                        break;
+                    }
+
+                    visited.Add(id);
                     frontier.Add(id);
                 }
+
+                // Derived wins over copy when a pair has both.
+                edges[(link.Parent, link.Child)] = edges.GetValueOrDefault((link.Parent, link.Child), true) && link.IsCopy;
             }
         }
 
@@ -254,9 +267,10 @@ public static class FirearmEndpoints
         return TypedResults.Ok(new FamilyTreeDto(
             [.. nodes.Values.OrderBy(n => n.DesignDate?.Year ?? int.MaxValue).ThenBy(n => n.Name)],
             // Relations already hide drafts; the key check keeps a filtered-out node from ever becoming a 500.
-            [.. edges.Where(e => nodes.ContainsKey(e.Parent) && nodes.ContainsKey(e.Child))
-                .Select(e => new FamilyTreeEdgeDto(nodes[e.Parent].Slug, nodes[e.Child].Slug))
-                .OrderBy(e => e.Source).ThenBy(e => e.Target)]));
+            [.. edges.Where(e => nodes.ContainsKey(e.Key.Parent) && nodes.ContainsKey(e.Key.Child))
+                .Select(e => new FamilyTreeEdgeDto(nodes[e.Key.Parent].Slug, nodes[e.Key.Child].Slug, e.Value))
+                .OrderBy(e => e.Source).ThenBy(e => e.Target)],
+            truncated));
     }
 
     /// <summary>Base variants of up to four firearms, in the order requested.</summary>
