@@ -31,6 +31,9 @@ public sealed record VideoInput(string Url, string Title, string? Channel, DateT
 
 public sealed record AdminVideoDto(int Id, VideoStatus Status, VideoDto Video);
 
+/// <summary>A video in the review queue, with the firearm it was suggested for.</summary>
+public sealed record AdminVideoListItemDto(int Id, VideoStatus Status, VideoDto Video, int FirearmId, string FirearmSlug, string FirearmName);
+
 /// <summary>
 /// Images of firearms, people, organizations and cartridges, and videos of firearms. Like citations they are
 /// plain add/remove entries that don't take the subject's version.
@@ -72,10 +75,13 @@ public static class AdminMediaEndpoints
                 .ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status404NotFound);
         }
 
+        // The licenses an image may carry (the upload form's choices), so the admin UI never keeps its own copy.
+        images.MapGet("/images/licenses", () => TypedResults.Ok(ImageLicenses.All.Select(l => new LicenseDto(l.Id, l.Name, l.Url)).ToList()));
         images.MapPut("/images/{imageId:int}", UpdateImage).Validate<ImageDetailsInput>().ProducesProblem(StatusCodes.Status404NotFound);
         images.MapDelete("/images/{imageId:int}", DeleteImage).ProducesProblem(StatusCodes.Status404NotFound);
 
         var videos = admin.MapGroup("").WithTags("Admin: videos");
+        videos.MapGet("/videos", ListAllVideos);
         videos.MapGet("/firearms/{id:int}/videos", ListVideos).ProducesProblem(StatusCodes.Status404NotFound);
         videos.MapPost("/firearms/{id:int}/videos", AddVideo).Validate<VideoInput>()
             .ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
@@ -282,6 +288,26 @@ public static class AdminMediaEndpoints
         return TypedResults.Ok(await db.Videos.IgnoreQueryFilters().Where(v => v.FirearmId == id)
             .OrderBy(v => v.Status).ThenByDescending(v => v.PublishedAt).ThenBy(v => v.Id)
             .Select(ToAdminVideoDto).ToListAsync(ct));
+    }
+
+    /// <summary>
+    /// Videos across all firearms, newest first (PLAN.md Phase 7d: the review screen lists the importer's suggestions
+    /// with <c>?status=Suggested</c>). Draft firearms included: their videos are reviewed before they are published.
+    /// </summary>
+    private static async Task<Ok<PagedResult<AdminVideoListItemDto>>> ListAllVideos(
+        VideoStatus? status, int? page, int? pageSize, ArmoryWikiDbContext db, CancellationToken ct)
+    {
+        var query = db.Videos.IgnoreQueryFilters();
+        if (status is { } s)
+        {
+            query = query.Where(v => v.Status == s);
+        }
+
+        return TypedResults.Ok(await query
+            .OrderByDescending(v => v.PublishedAt).ThenBy(v => v.Id)
+            .ToPagedAsync(v => new AdminVideoListItemDto(
+                v.Id, v.Status, new VideoDto(v.YouTubeVideoId, v.Title, v.Channel, v.PublishedAt), v.FirearmId, v.Firearm.Slug, v.Firearm.Name),
+                page, pageSize, ct));
     }
 
     /// <summary>A video an admin adds by hand is approved straight away.</summary>

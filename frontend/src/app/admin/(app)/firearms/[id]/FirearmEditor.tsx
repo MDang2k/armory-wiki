@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { CitationsSection } from "@/components/admin/CitationsSection";
+import { ImagesSection } from "@/components/admin/ImagesSection";
 import { ConfirmButton, Notice, StatusBadge, buttonClass } from "@/components/admin/ui";
 import { ApiProblem, isVersionConflict } from "@/lib/admin/problems";
 import { MISSING_FOR_PUBLISH } from "@/lib/labels";
@@ -134,6 +135,7 @@ export function FirearmEditor() {
       <ManufacturersSection firearm={f} />
       <AdoptionsSection firearm={f} />
       <RelationsSection firearm={f} />
+      <ImagesSection owner="firearms" id={f.id} />
       <CitationsSection subject="firearms" id={f.id} fields={Object.keys(f.details)} />
     </div>
   );

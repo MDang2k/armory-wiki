@@ -5,12 +5,16 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { CitationsSection } from "@/components/admin/CitationsSection";
+import { ImagesSection, type ImageOwner } from "@/components/admin/ImagesSection";
 import { ResourceForm } from "@/components/admin/ResourceForm";
 import { ConfirmButton, Notice, StatusBadge, buttonClass, useDocumentTitle } from "@/components/admin/ui";
 import { ApiProblem, isVersionConflict } from "@/lib/admin/problems";
 import { deleteResource, loadResource, resourceKeys, setResourcePublished, type AdminEntity } from "@/lib/admin/resourceApi";
 import { RESOURCES, isResourceRoute, type ResourceRoute } from "@/lib/admin/resources";
 import { MISSING_FOR_PUBLISH } from "@/lib/labels";
+
+/** The generic resources that have images (firearms have their own editor). */
+const IMAGE_OWNERS: readonly string[] = ["people", "organizations", "cartridges"] satisfies ImageOwner[];
 
 function useRoute() {
   const { resource } = useParams<{ resource: string }>();
@@ -155,6 +159,7 @@ function Editor({ route, id, rawId }: { route: ResourceRoute; id: number; rawId:
         <ResourceForm route={route} spec={spec} entity={e} />
       </section>
 
+      {IMAGE_OWNERS.includes(route) && <ImagesSection owner={route as ImageOwner} id={e.id} />}
       {spec.cited && <CitationsSection subject={route as "people"} id={e.id} fields={Object.keys(spec.fields)} />}
     </div>
   );

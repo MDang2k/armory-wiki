@@ -482,8 +482,8 @@ Built in five slices (7a–7e), each tested, reviewed and committed on its own. 
 - [x] Sources, and citations on every entity that takes them (firearms, variants, people, organizations, cartridges): pick a source by title or author, optionally narrow to one field, give a page or chapter. A source in use can't be deleted. Checked by clicking through: a source created, a person created (an unknown nationality reported on its field), cited, published and seen on the public page with its source, unpublished and deleted (its citation with it), the source deleted
 
 **7d: images and videos**
-- [ ] Image upload, one file at a time (drag-drop or picker): type and size checked in the browser against the API's limits, license (from the API's options), author and source URL required, caption optional, a preview; edit details, reorder and delete afterwards
-- [ ] `GET /api/admin/videos?status=Suggested` (paged, with each video's firearm name and slug) and a review screen that approves or rejects across all firearms
+- [x] Image upload, one file at a time (drag-drop or picker): type and size checked in the browser against the API's limits, license (from the API's options), author and source URL required, caption optional, a preview; edit details, reorder and delete afterwards. On firearms, people, organizations and cartridges. The license options come from a new `GET /api/admin/images/licenses` (tested), so the UI keeps no copy
+- [x] `GET /api/admin/videos?status=Suggested` (paged, with each video's firearm name and slug) and a review screen that approves or rejects across all firearms (and lists approved or rejected ones to change a decision). Checked by clicking through: a GIF refused in the browser, a PNG uploaded with a preview, a non-http source reported on its field, a second image moved first, a caption edited, both deleted; a suggested video rejected and found under Rejected
 
 **7e: merge into variant** ([ADR-0007](docs/adr/0007-variants-carry-wikidata-qids.md))
 - [ ] `Variant.WikidataId` (optional, unique; a QID is unique across firearms and variants), and the Wikidata importer treats a QID held by a variant as known and reports it as merged

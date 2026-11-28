@@ -5283,6 +5283,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/images/licenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LicenseDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/images/{imageId}": {
         parameters: {
             query?: never;
@@ -5365,6 +5400,45 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/videos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: components["schemas"]["VideoStatus"];
+                    page?: number;
+                    pageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PagedResultOfAdminVideoListItemDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -5766,6 +5840,16 @@ export interface components {
             status: components["schemas"]["VideoStatus"];
             video: components["schemas"]["VideoDto"];
         };
+        AdminVideoListItemDto: {
+            /** Format: int32 */
+            id: number;
+            status: components["schemas"]["VideoStatus"];
+            video: components["schemas"]["VideoDto"];
+            /** Format: int32 */
+            firearmId: number;
+            firearmSlug: string;
+            firearmName: string;
+        };
         AdoptionDto: {
             country: components["schemas"]["SlugName"];
             from: null | components["schemas"]["FuzzyDateDto"];
@@ -6148,6 +6232,15 @@ export interface components {
         };
         PagedResultOfAdminSourceDto: {
             items: components["schemas"]["AdminSourceDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            totalCount: number;
+        };
+        PagedResultOfAdminVideoListItemDto: {
+            items: components["schemas"]["AdminVideoListItemDto"][];
             /** Format: int32 */
             page: number;
             /** Format: int32 */

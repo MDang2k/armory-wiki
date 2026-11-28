@@ -189,6 +189,15 @@ public sealed class AdminMediaTests(DatabaseFixture fixture) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, (await fixture.Client().GetAsync(image.Image.ThumbUrl)).StatusCode);
     }
 
+    [Fact]
+    public async Task Image_licenses_are_listed_for_the_upload_form()
+    {
+        var licenses = (await _admin.GetFromJsonAsync<List<LicenseDto>>("/api/admin/images/licenses", DatabaseFixture.Json))!;
+
+        Assert.Equal(ImageLicenses.All.Select(l => l.Id), licenses.Select(l => l.Id));
+        Assert.Contains(licenses, l => l.Id == "CC-BY-SA-4.0" && l.Url.StartsWith("https://creativecommons.org/", StringComparison.Ordinal));
+    }
+
     // Videos ----------------------------------------------------------------------------------------------------
 
     [Fact]
@@ -226,11 +235,19 @@ public sealed class AdminMediaTests(DatabaseFixture fixture) : IAsyncLifetime
         await db.SaveChangesAsync();
         Assert.Empty((await fixture.GetJsonAsync<FirearmDetailDto>("/api/firearms/ak-47")).Videos);
 
+        // The review queue lists suggestions across firearms, with the firearm each is for.
+        var queue = await _admin.GetFromJsonAsync<PagedResult<AdminVideoListItemDto>>("/api/admin/videos?status=Suggested", DatabaseFixture.Json);
+        var item = Assert.Single(queue!.Items);
+        Assert.Equal((suggested.Id, "ak-47", "AK-47", "abcdefghijk"), (item.Id, item.FirearmSlug, item.FirearmName, item.Video.YouTubeVideoId));
+
         await ReadAsync<AdminVideoDto>(await _admin.PostAsync($"/api/admin/videos/{suggested.Id}/approve", null));
         Assert.Single((await fixture.GetJsonAsync<FirearmDetailDto>("/api/firearms/ak-47")).Videos);
 
         await ReadAsync<AdminVideoDto>(await _admin.PostAsync($"/api/admin/videos/{suggested.Id}/reject", null));
         Assert.Empty((await fixture.GetJsonAsync<FirearmDetailDto>("/api/firearms/ak-47")).Videos);
+
+        // Reviewed: out of the review queue.
+        Assert.Empty((await _admin.GetFromJsonAsync<PagedResult<AdminVideoListItemDto>>("/api/admin/videos?status=Suggested", DatabaseFixture.Json))!.Items);
 
         var all = await _admin.GetFromJsonAsync<List<AdminVideoDto>>($"/api/admin/firearms/{suggested.FirearmId}/videos", DatabaseFixture.Json);
         Assert.Equal(VideoStatus.Rejected, Assert.Single(all!).Status);

@@ -14,6 +14,7 @@ const NAV = [
   { href: "/admin/firearms", label: "Firearms" },
   ...Object.entries(RESOURCES).map(([route, spec]) => ({ href: `/admin/${route}`, label: spec.plural })),
   { href: "/admin/sources", label: "Sources" },
+  { href: "/admin/videos", label: "Videos" },
 ];
 
 /**
