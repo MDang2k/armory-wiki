@@ -5,6 +5,7 @@ using ArmoryWiki.Api.Features.Mechanisms;
 using ArmoryWiki.Api.Features.Organizations;
 using ArmoryWiki.Api.Features.People;
 using ArmoryWiki.Api.Features.Reference;
+using ArmoryWiki.Domain;
 
 namespace ArmoryWiki.Api.Tests;
 
@@ -86,10 +87,40 @@ public sealed class ReferenceResourceTests(DatabaseFixture fixture)
     [Fact]
     public async Task Timeline_lists_dated_firearms_in_range_oldest_first()
     {
-        var items = await fixture.GetJsonAsync<List<TimelineItemDto>>("/api/timeline?from=1940&to=1950");
+        var timeline = await fixture.GetJsonAsync<TimelineDto>("/api/timeline?from=1940&to=1950");
 
-        Assert.Equal(["stg-44", "sks", "ak-47", "akm"], items.Select(i => i.Slug));
-        Assert.Equal(1959, items[^1].DesignYearTo);
+        Assert.Equal(["stg-44", "sks", "ak-47", "akm"], timeline.Items.Select(i => i.Slug));
+        Assert.Equal(1959, timeline.Items[^1].DesignYearTo);
+        Assert.Equal(4, timeline.Total);
+    }
+
+    [Fact]
+    public async Task Timeline_stops_at_500_and_counts_the_rest()
+    {
+        // 501 firearms designed in 1700, a year nothing else uses. Tests in this collection run one at a time.
+        await using var db = fixture.NewDbContext();
+        var many = Enumerable.Range(1, 501).Select(i => new Firearm
+        {
+            Slug = $"timeline-probe-{i}",
+            Name = $"Timeline Probe {i:000}",
+            Status = PublishStatus.Published,
+            DesignDate = FuzzyDate.InYear(1700),
+        }).ToList();
+        db.Firearms.AddRange(many);
+        await db.SaveChangesAsync();
+        try
+        {
+            var timeline = await fixture.GetJsonAsync<TimelineDto>("/api/timeline?from=1700&to=1700");
+
+            Assert.Equal(501, timeline.Total);
+            Assert.Equal(500, timeline.Items.Count);
+            Assert.Equal("Timeline Probe 001", timeline.Items[0].Name); // oldest first, then by name
+        }
+        finally
+        {
+            db.Firearms.RemoveRange(many);
+            await db.SaveChangesAsync();
+        }
     }
 
     [Theory]

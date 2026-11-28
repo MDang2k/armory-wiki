@@ -501,8 +501,8 @@ Built in three slices (8a–8c), each tested, reviewed and committed on its own.
 - [x] The "Family tree" link on firearm pages only when the firearm has lineage relations
 
 **8b: timeline**
-- [ ] `/api/timeline` answers `{ items, total }` with at most 500 items
-- [ ] `/timeline`: server-rendered, no new dependency: a year axis, each firearm a bar from its design year to `yearTo` (a dot when single), rows packed by a pure lane-packing function, horizontal scroll, each item a link; filters (year range, default 1900–1950, country, tag) as a plain GET form; "narrow the range or filters" when the cap is hit. Timeline joins the header nav
+- [x] `/api/timeline` answers `{ items, total }` with at most 500 items (tested with 501)
+- [x] `/timeline`: server-rendered, no new dependency: a year axis, each firearm a bar from its design year to `yearTo` (a dot when single), rows packed by a pure lane-packing function, horizontal scroll, each item a link; filters (year range, default 1900–1950, country, tag) as a plain GET form; "narrow the range or filters" when the cap is hit. Timeline joins the header nav and the sitemap. Rows are packed with each label's width, so labels never overlap
 
 **8c: compare differences, and the check at scale**
 - [ ] Compare: rows where the firearms differ are emphasised, matching rows muted, and "Show only differences" (`?diff=1`) hides the matching ones. No best/worst colouring (whether more is better depends on the row)

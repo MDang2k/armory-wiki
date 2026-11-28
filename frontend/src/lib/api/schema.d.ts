@@ -727,7 +727,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["TimelineItemDto"][];
+                        "application/json": components["schemas"]["TimelineDto"];
                     };
                 };
             };
@@ -6514,6 +6514,11 @@ export interface components {
         };
         TagsInput: {
             tags: string[];
+        };
+        TimelineDto: {
+            items: components["schemas"]["TimelineItemDto"][];
+            /** Format: int32 */
+            total: number;
         };
         TimelineItemDto: {
             slug: string;

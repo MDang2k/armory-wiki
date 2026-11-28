@@ -2,6 +2,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { api, toLoaded, type Loaded } from "./client";
 import type { Dto } from "./types";
 import { parseFilters, toApiQuery } from "../filters";
+import { parseTimelineFilters } from "../timeline";
 
 /**
  * Cached reads of the API (PLAN.md §5). Each loader tags every entity type it shows and "all"; the API expires
@@ -184,4 +185,27 @@ export async function loadFamilyTree(slug: string, depth: number): Promise<Loade
   }
 
   return toLoaded(result);
+}
+
+/** The timeline for one set of filters (the canonical query string is the cache key). */
+export async function loadTimeline(query: string) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("firearms", "reference", "all");
+  const f = parseTimelineFilters(Object.fromEntries(new URLSearchParams(query)));
+  const { data, response } = await api.GET("/api/timeline", {
+    params: { query: { from: f.from, to: f.to, country: f.country || undefined, tag: f.tag || undefined } },
+  });
+  if (!data) throw new Error(`API ${response.status} loading the timeline`);
+  return data;
+}
+
+/** Countries and tags, for filter choices. */
+export async function loadReferenceLists() {
+  "use cache";
+  cacheLife("days");
+  cacheTag("reference", "all");
+  const [countries, tags] = await Promise.all([api.GET("/api/countries"), api.GET("/api/tags")]);
+  if (!countries.data || !tags.data) throw new Error(`API ${countries.response.status}/${tags.response.status} loading countries and tags`);
+  return { countries: countries.data, tags: tags.data };
 }

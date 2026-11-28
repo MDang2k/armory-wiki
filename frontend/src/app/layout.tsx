@@ -9,13 +9,14 @@ export const metadata: Metadata = {
   description: "Encyclopedic database of firearms: history, designers, specifications, cartridges and mechanisms.",
 };
 
-// Timeline joins in Phase 8. "Designers" is a role (GLOSSARY.md), so people and organizations are listed apart.
+// "Designers" is a role (GLOSSARY.md), so people and organizations are listed apart.
 const NAV = [
   { href: "/firearms", label: "Firearms" },
   { href: "/cartridges", label: "Cartridges" },
   { href: "/mechanisms", label: "Mechanisms" },
   { href: "/people", label: "People" },
   { href: "/organizations", label: "Organizations" },
+  { href: "/timeline", label: "Timeline" },
 ] as const;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
