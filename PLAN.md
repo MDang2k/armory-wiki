@@ -493,9 +493,20 @@ Built in five slices (7a–7e), each tested, reviewed and committed on its own. 
 **Done when** (met across 7a–7e, each slice clicked through in the browser): an admin can create a complete firearm page with images and citations, and review imported drafts, entirely through the UI.
 
 ### Phase 8: Exploration features
-- [ ] Family tree page with React Flow (dagre layout, top-to-bottom, clickable nodes)
-- [ ] `/timeline` (vis-timeline or a custom SVG), filters for country/tag, clicking an item opens the firearm
-- [ ] Compare page with differences highlighted
+Built in three slices (8a–8c), each tested, reviewed and committed on its own. Tests: Vitest for the pure parts (lane packing, row differences, layout helpers), an integration test for each API change; the pages are checked by clicking through.
+
+**8a: family tree** (GLOSSARY.md: *family tree*)
+- [ ] The family-tree API follows *copy of* as well as *derived from* (each edge says which), and stops at 150 nodes, nearest first, with `truncated: true`
+- [ ] `/firearms/[slug]/family-tree`: a server shell with a cached loader and a React Flow (`@xyflow/react`) client island, dagre (`@dagrejs/dagre`) top-to-bottom; copies drawn dashed; the root highlighted; each node shows name and design year and opens that firearm; a depth control (1–5, default 3) in the URL; "showing the nearest 150; reduce the depth" when truncated; a plain nested list of the same family under the graph (screen readers, no JavaScript)
+- [ ] The "Family tree" link on firearm pages only when the firearm has lineage relations
+
+**8b: timeline**
+- [ ] `/api/timeline` answers `{ items, total }` with at most 500 items
+- [ ] `/timeline`: server-rendered, no new dependency: a year axis, each firearm a bar from its design year to `yearTo` (a dot when single), rows packed by a pure lane-packing function, horizontal scroll, each item a link; filters (year range, default 1900–1950, country, tag) as a plain GET form; "narrow the range or filters" when the cap is hit. Timeline joins the header nav
+
+**8c: compare differences, and the check at scale**
+- [ ] Compare: rows where the firearms differ are emphasised, matching rows muted, and "Show only differences" (`?diff=1`) hides the matching ones. No best/worst colouring (whether more is better depends on the row)
+- [ ] The "Done when" run on a scratch database (a separate compose project, never the dev or production one): `import-wikidata` into it, publish everything there with one throwaway SQL update (testing only), point a local API at it, click through the three features, then delete the scratch database
 
 **Done when:** each feature works against the imported dataset, not just the seed, and `npm run build` passes.
 

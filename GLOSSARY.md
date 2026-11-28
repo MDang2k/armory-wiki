@@ -61,6 +61,10 @@ _Avoid_: based on, descendant
 The firearm reproduces the other's design with at most minor changes, under license or not (the Type 56 is a copy of the AK-47). Real design changes make it *derived from* instead.
 _Avoid_: clone, knock-off
 
+**Family tree**:
+The firearms connected to one firearm through *derived from* and *copy of*, followed both up (what it came from) and down (what came from it). Influence, competition and replacement are not lineage and stay out of it.
+_Avoid_: lineage chart, genealogy
+
 **Influenced by**:
 The firearm's design shows a documented influence from the other, without direct derivation.
 _Avoid_: inspired by
