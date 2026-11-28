@@ -1129,6 +1129,10 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("weight_empty_g");
 
+                    b.Property<string>("WikidataId")
+                        .HasColumnType("text")
+                        .HasColumnName("wikidata_id");
+
                     b.HasKey("Id")
                         .HasName("pk_variants");
 
@@ -1136,6 +1140,10 @@ namespace ArmoryWiki.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_variants_one_base_per_firearm")
                         .HasFilter("is_base_variant");
+
+                    b.HasIndex("WikidataId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_variants_wikidata_id");
 
                     b.HasIndex("FirearmId", "Slug")
                         .IsUnique()

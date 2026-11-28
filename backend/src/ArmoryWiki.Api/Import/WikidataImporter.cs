@@ -54,6 +54,17 @@ public sealed class WikidataImporter(ArmoryWikiDbContext db, WikimediaClient wik
             }
         }
 
+        // An admin merged these into a variant of another firearm (ADR-0007): known, never recreated as firearms.
+        // Links to them ("based on M4A1") lead to the firearm that holds the variant.
+        var merged = await db.Variants.IgnoreQueryFilters().Where(v => v.WikidataId != null)
+            .Select(v => new { v.WikidataId, v.FirearmId }).ToDictionaryAsync(v => v.WikidataId!, v => v.FirearmId, ct);
+        foreach (var (qid, _) in firearms.Where(f => merged.ContainsKey(f.Qid)).ToList())
+        {
+            report.Add("firearm", qid, "merged into a variant by an admin; not imported as a firearm");
+            report.Count("firearm", "merged");
+            firearms.RemoveAll(f => f.Qid == qid);
+        }
+
         // One level deep: what the firearms reference, plus those entities' countries.
         var related = await FetchAsync(
             firearms.SelectMany(f => f.Facts.DesignerQids.Concat(f.Facts.ManufacturerQids).Concat(f.Facts.AmmunitionQids)), ct);
@@ -102,6 +113,11 @@ public sealed class WikidataImporter(ArmoryWikiDbContext db, WikimediaClient wik
         foreach (var f in await db.Firearms.IgnoreQueryFilters().Where(f => f.WikidataId != null).Select(f => new { f.Id, f.WikidataId }).ToListAsync(ct))
         {
             _firearms.TryAdd(f.WikidataId!, f.Id);
+        }
+
+        foreach (var (qid, firearmId) in merged)
+        {
+            _firearms.TryAdd(qid, firearmId);
         }
 
         foreach (var (qid, facts) in firearms.Where(f => f.Facts.BasedOnQids.Count > 0))
@@ -445,7 +461,8 @@ public sealed class WikidataImporter(ArmoryWikiDbContext db, WikimediaClient wik
             return;
         }
 
-        var parents = basedOn.Select(Resolve).Where(q => q != qid && _firearms.ContainsKey(q)).Select(q => _firearms[q]).Distinct().ToList();
+        // A merged variant's QID maps to the firearm holding it, which may be this one: never a relation to itself.
+        var parents = basedOn.Select(Resolve).Where(q => q != qid && _firearms.ContainsKey(q)).Select(q => _firearms[q]).Where(p => p != id).Distinct().ToList();
         if (parents.Count == 0)
         {
             return;

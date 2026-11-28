@@ -56,10 +56,11 @@ internal static class FirearmEditing
             ? problem
             : TypedResults.Ok(await db.ReloadDtoAsync(firearm.Id, ct));
 
-    public static Task<bool> WikidataIdTakenAsync(this ArmoryWikiDbContext db, string? qid, int? exceptId, CancellationToken ct) =>
-        qid is null
-            ? Task.FromResult(false)
-            : db.Firearms.IgnoreQueryFilters().AnyAsync(f => f.WikidataId == qid && f.Id != exceptId, ct);
+    /// <summary>Whether another firearm, or any variant (a merged firearm, ADR-0007), already holds the QID.</summary>
+    public static async Task<bool> WikidataIdTakenAsync(this ArmoryWikiDbContext db, string? qid, int? exceptId, CancellationToken ct) =>
+        qid is not null
+        && (await db.Firearms.IgnoreQueryFilters().AnyAsync(f => f.WikidataId == qid && f.Id != exceptId, ct)
+            || await db.Variants.IgnoreQueryFilters().AnyAsync(v => v.WikidataId == qid, ct));
 
     public static async Task<AdminFirearmDto> ReloadDtoAsync(this ArmoryWikiDbContext db, int id, CancellationToken ct)
     {
@@ -231,6 +232,7 @@ internal static class FirearmEditing
         [.. f.Variants.OrderByDescending(v => v.IsBaseVariant).ThenBy(v => v.Name).Select(v => new AdminVariantDto(
             v.Id,
             v.IsBaseVariant,
+            v.WikidataId,
             v.ToInput(),
             [.. v.Chamberings.OrderByDescending(c => c.IsPrimary).ThenBy(c => c.Cartridge.Slug).Select(c => new ChamberingInput(c.Cartridge.Slug, c.IsPrimary))]))],
         [.. f.Designers.OrderBy(d => d.Role).Select(d => new DesignerInput(d.Person?.Slug, d.Organization?.Slug, d.Role))],

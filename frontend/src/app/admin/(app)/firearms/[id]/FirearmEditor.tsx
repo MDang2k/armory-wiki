@@ -96,6 +96,9 @@ export function FirearmEditor() {
               <button type="button" className={buttonClass} disabled={busy || f.missingForPublish.length > 0} onClick={() => status.mutate(true)}>
                 Publish
               </button>
+              <Link href={`/admin/firearms/${f.id}/merge`} className={`${buttonClass} no-underline`}>
+                Merge into variant…
+              </Link>
               <ConfirmButton
                 label="Delete"
                 question={<>Delete <strong>{f.details.name}</strong> with its variants, images and citations? This cannot be undone.</>}

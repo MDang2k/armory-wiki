@@ -184,6 +184,11 @@ function VariantCard({ firearm, variant }: { firearm: Firearm; variant: Firearm[
           <>
             {variant.details.name}
             {variant.isBaseVariant && <span className="ml-2 text-sm font-normal text-muted">base variant</span>}
+            {variant.wikidataId && (
+              <span className="ml-2 text-sm font-normal text-muted" title="A firearm merged into this variant; imports recognise it by this id">
+                merged, {variant.wikidataId}
+              </span>
+            )}
           </>
         }
         firearm={firearm}

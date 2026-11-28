@@ -77,6 +77,26 @@ public sealed class WikidataImportTests(DatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task A_firearm_merged_into_a_variant_is_not_imported_again()
+    {
+        var options = await DatabaseAsync();
+        await using (var setup = new ArmoryWikiDbContext(options))
+        {
+            // As if an admin had merged the Mannlicher M1895 into a variant of the AK-47 (ADR-0007).
+            var akBase = await setup.Variants.IgnoreQueryFilters().AsTracking().SingleAsync(v => v.Firearm.Slug == "ak-47" && v.IsBaseVariant);
+            akBase.WikidataId = "Q983967";
+            await setup.SaveChangesAsync();
+        }
+
+        var report = await ImportAsync(options);
+
+        await using var db = new ArmoryWikiDbContext(options);
+        Assert.False(await db.Firearms.IgnoreQueryFilters().AnyAsync(f => f.WikidataId == "Q983967"));
+        Assert.Equal(1, report.CountOf("firearm", "merged"));
+        Assert.Contains(report.Issues, i => i.Qid == "Q983967" && i.Message.Contains("merged into a variant", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task A_second_run_changes_nothing()
     {
         var options = await DatabaseAsync();

@@ -2017,6 +2017,105 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/firearms/{id}/merge-into/{targetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                    targetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MergePreviewDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query: {
+                    version: number;
+                    targetVersion: number;
+                };
+                header?: never;
+                path: {
+                    id: number;
+                    targetId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminFirearmDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/people": {
         parameters: {
             query?: never;
@@ -5831,6 +5930,7 @@ export interface components {
             /** Format: int32 */
             id: number;
             isBaseVariant: boolean;
+            wikidataId: null | string;
             details: components["schemas"]["VariantInput"];
             chamberings: components["schemas"]["ChamberingInput"][];
         };
@@ -6180,6 +6280,13 @@ export interface components {
             slug: string;
             name: string;
             children: components["schemas"]["MechanismNodeDto"][];
+        };
+        MergePreviewDto: {
+            source: string;
+            target: string;
+            blockers: string[];
+            moves: string[];
+            drops: string[];
         };
         OrganizationDetailDto: {
             slug: string;

@@ -24,6 +24,7 @@ public static class AdminFirearmPartsEndpoints
         firearms.MapPut("/{id:int}/manufacturers", ReplaceManufacturers).Validate<ManufacturersInput>().ProducesWriteProblems();
         firearms.MapPut("/{id:int}/relations", ReplaceRelations).Validate<RelationsInput>().ProducesWriteProblems();
         firearms.MapPut("/{id:int}/adoptions", ReplaceAdoptions).Validate<AdoptionsInput>().ProducesWriteProblems();
+        firearms.MapFirearmMerge();
     }
 
     private static ProblemHttpResult VariantNotFound(int variantId) =>

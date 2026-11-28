@@ -486,11 +486,11 @@ Built in five slices (7a–7e), each tested, reviewed and committed on its own. 
 - [x] `GET /api/admin/videos?status=Suggested` (paged, with each video's firearm name and slug) and a review screen that approves or rejects across all firearms (and lists approved or rejected ones to change a decision). Checked by clicking through: a GIF refused in the browser, a PNG uploaded with a preview, a non-http source reported on its field, a second image moved first, a caption edited, both deleted; a suggested video rejected and found under Rejected
 
 **7e: merge into variant** ([ADR-0007](docs/adr/0007-variants-carry-wikidata-qids.md))
-- [ ] `Variant.WikidataId` (optional, unique; a QID is unique across firearms and variants), and the Wikidata importer treats a QID held by a variant as known and reports it as merged
-- [ ] `POST /api/admin/firearms/{id}/merge-into/{targetId}`, drafts only, in one transaction: the source's base variant specs and chamberings become a new variant of the target carrying the source's QID; images, citations and videos move to the target; designers, manufacturers, adoptions and tags join the target's (duplicates dropped); relations from other firearms are re-pointed to the target (self-relations and duplicates dropped); the source's prose is discarded; a `SlugRedirect` sends the old slug to the target; the source is deleted
-- [ ] The merge screen: pick the target, preview what moves and what is dropped, confirm
+- [x] `Variant.WikidataId` (optional, unique; a QID is unique across firearms and variants), and the Wikidata importer treats a QID held by a variant as known and reports it as merged (tested); links to it ("based on") lead to the firearm holding the variant
+- [x] `POST /api/admin/firearms/{id}/merge-into/{targetId}?version=&targetVersion=` (and a `GET` preview from the same plan), drafts only, in one transaction: the source's base variant specs and chamberings become a new variant of the target carrying the source's QID; images, citations and videos move to the target; designers, manufacturers, adoptions and tags join the target's (duplicates dropped); relations from other firearms are re-pointed to the target (self-relations and duplicates dropped); the source's prose is discarded; a `SlugRedirect` sends the old slug to the target; the source is deleted
+- [x] The merge screen: pick the target, preview what moves and what is dropped, confirm. Relations other firearms hold on the source that would duplicate or loop are dropped and listed; the source's other variants move too. Checked by clicking through: a draft with a QID merged into another, landing on the target with the variant marked as merged
 
-**Done when:** an admin can create a complete firearm page with images and citations, and review imported drafts, entirely through the UI.
+**Done when** (met across 7a–7e, each slice clicked through in the browser): an admin can create a complete firearm page with images and citations, and review imported drafts, entirely through the UI.
 
 ### Phase 8: Exploration features
 - [ ] Family tree page with React Flow (dagre layout, top-to-bottom, clickable nodes)

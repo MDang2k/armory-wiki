@@ -50,6 +50,7 @@ internal sealed class VariantConfiguration : IEntityTypeConfiguration<Variant>
     {
         b.HasQueryFilter(v => v.Firearm.Status == PublishStatus.Published);
         b.HasIndex(v => new { v.FirearmId, v.Slug }).IsUnique();
+        b.HasIndex(v => v.WikidataId).IsUnique();
         b.HasIndex(v => v.FirearmId)
             .IsUnique()
             .HasFilter("is_base_variant")

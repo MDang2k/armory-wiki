@@ -66,7 +66,8 @@ public sealed record ChamberingsInput(IReadOnlyList<ChamberingInput> Chamberings
 
 // Outputs.
 
-public sealed record AdminVariantDto(int Id, bool IsBaseVariant, VariantInput Details, IReadOnlyList<ChamberingInput> Chamberings);
+/// <summary><see cref="WikidataId"/> is set only on a variant a firearm was merged into (ADR-0007); it is not editable.</summary>
+public sealed record AdminVariantDto(int Id, bool IsBaseVariant, string? WikidataId, VariantInput Details, IReadOnlyList<ChamberingInput> Chamberings);
 
 /// <summary>
 /// <see cref="Version"/> must be sent back with every change (409 when stale). <see cref="MissingForPublish"/> lists the

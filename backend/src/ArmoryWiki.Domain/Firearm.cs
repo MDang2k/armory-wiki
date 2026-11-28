@@ -50,6 +50,11 @@ public sealed class Variant : Entity
     public required string Slug { get; set; }
     public required string Name { get; set; }
     public bool IsBaseVariant { get; set; }
+    /// <summary>
+    /// The QID of a firearm merged into this variant (ADR-0007), so imports recognise it instead of recreating the
+    /// firearm. A QID is unique across firearms and variants together.
+    /// </summary>
+    public string? WikidataId { get; set; }
     public FuzzyDate? IntroducedDate { get; set; }
 
     public int? WeightEmptyG { get; set; }

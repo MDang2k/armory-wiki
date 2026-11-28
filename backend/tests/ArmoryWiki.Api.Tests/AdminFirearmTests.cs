@@ -404,4 +404,78 @@ public sealed class AdminFirearmTests(DatabaseFixture fixture) : IAsyncLifetime
 
         Assert.DoesNotContain(key, f.LockedFields);
     }
+
+    // Merge into variant (ADR-0007) -----------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Merge_turns_a_draft_into_a_variant_and_carries_over_what_hangs_off_it()
+    {
+        var target = await PublishAsync(await CreateAsync(new { name = "Merge Target" }));
+        target = await ReadAsync(await PutAsync(target, "/designers", new DesignersInput([new("eugene-stoner", null, DesignerRole.LeadDesigner)])));
+
+        var source = await CreateAsync(new { name = "Merge Source M", wikidataId = "Q99999992" });
+        source = await ReadAsync(await PutAsync(source, "/designers", new DesignersInput(
+            [new("eugene-stoner", null, DesignerRole.LeadDesigner), new("john-garand", null, DesignerRole.CoDesigner)])));
+        source = await ReadAsync(await PutAsync(source, "/tags", new TagsInput(["assault-rifle"])));
+        var sourceBase = source.Variants.Single(v => v.IsBaseVariant);
+        source = await ReadAsync(await PutAsync(source, $"/variants/{sourceBase.Id}/chamberings", new ChamberingsInput([new("5-45x39mm", true)])));
+        source = await ReadAsync(await PutAsync(source, "/relations", new RelationsInput([new(RelationType.InfluencedBy, "ak-47", null)])));
+        var wikidataSource = (await _admin.GetFromJsonAsync<PagedResult<JsonElement>>("/api/admin/sources?q=Wikidata", DatabaseFixture.Json))!.Items[0].GetProperty("id").GetInt32();
+        Assert.True((await _admin.PostAsJsonAsync($"{Firearms}/{source.Id}/citations", new { sourceId = wikidataSource }, DatabaseFixture.Json)).IsSuccessStatusCode);
+
+        var child = await CreateAsync(new { name = "Merge Child" });
+        await ReadAsync(await PutAsync(child, "/relations", new RelationsInput([new(RelationType.DerivedFrom, "merge-source-m", null)])));
+
+        // The preview says what will happen ...
+        var preview = (await _admin.GetFromJsonAsync<MergePreviewDto>($"{Firearms}/{source.Id}/merge-into/{target.Id}", DatabaseFixture.Json))!;
+        Assert.Empty(preview.Blockers);
+        Assert.Contains("Designer John Garand.", preview.Moves);
+        Assert.Contains(preview.Drops, d => d.StartsWith("Designer Eugene Stoner: already credited", StringComparison.Ordinal));
+        Assert.Contains(preview.Drops, d => d.StartsWith("Its own relation to AK-47", StringComparison.Ordinal));
+        Assert.Contains("Merge Child's relation now points at Merge Target.", preview.Moves);
+
+        // ... and the merge does it.
+        var merged = await ReadAsync(await _admin.PostAsync($"{Firearms}/{source.Id}/merge-into/{target.Id}?version={source.Version}&targetVersion={target.Version}", null));
+
+        Assert.Equal(HttpStatusCode.NotFound, (await _admin.GetAsync($"{Firearms}/{source.Id}")).StatusCode);
+        var variant = merged.Variants.Single(v => v.Details.Slug == "merge-source-m");
+        Assert.Equal(("Merge Source M", "Q99999992", false), (variant.Details.Name, variant.WikidataId, variant.IsBaseVariant));
+        Assert.Equal([new ChamberingInput("5-45x39mm", true)], variant.Chamberings);
+        Assert.Equal(["eugene-stoner", "john-garand"], merged.Designers.Select(d => d.Person).Order());
+        Assert.Contains("assault-rifle", merged.Tags);
+        Assert.Equal(PublishStatus.Published, merged.Status);
+
+        var childAfter = await ReadAsync(await _admin.GetAsync($"{Firearms}/{child.Id}"));
+        Assert.Equal([new RelationInput(RelationType.DerivedFrom, "merge-target", null)], childAfter.Relations);
+        var citations = await _admin.GetFromJsonAsync<List<JsonElement>>($"{Firearms}/{target.Id}/citations", DatabaseFixture.Json);
+        Assert.Single(citations!);
+
+        // The old address leads to the target, and the QID stays taken (imports and admins can't reuse it).
+        using var publicClient = fixture.Client(followRedirects: false);
+        var redirect = await publicClient.GetAsync("/api/firearms/merge-source-m");
+        Assert.Equal(HttpStatusCode.MovedPermanently, redirect.StatusCode);
+        Assert.Equal("/api/firearms/merge-target", redirect.Headers.Location?.OriginalString);
+        var reuse = await _admin.PostAsJsonAsync(Firearms, new { name = "QID Reuse", wikidataId = "Q99999992" }, DatabaseFixture.Json);
+        Assert.Equal(HttpStatusCode.Conflict, reuse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Only_drafts_merge_and_only_at_the_versions_previewed()
+    {
+        var target = await CreateAsync(new { name = "Merge Guard Target" });
+        var published = await PublishAsync(await CreateAsync(new { name = "Merge Guard Published" }));
+
+        var preview = (await _admin.GetFromJsonAsync<MergePreviewDto>($"{Firearms}/{published.Id}/merge-into/{target.Id}", DatabaseFixture.Json))!;
+        Assert.Contains(preview.Blockers, b => b.Contains("unpublish it first", StringComparison.Ordinal));
+        var refused = await _admin.PostAsync($"{Firearms}/{published.Id}/merge-into/{target.Id}?version={published.Version}&targetVersion={target.Version}", null);
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+
+        var self = (await _admin.GetFromJsonAsync<MergePreviewDto>($"{Firearms}/{target.Id}/merge-into/{target.Id}", DatabaseFixture.Json))!;
+        Assert.NotEmpty(self.Blockers);
+
+        var draft = await CreateAsync(new { name = "Merge Guard Draft" });
+        var stale = await _admin.PostAsync($"{Firearms}/{draft.Id}/merge-into/{target.Id}?version={draft.Version}&targetVersion={target.Version + 1}", null);
+        await ProblemAsync(stale, HttpStatusCode.Conflict);
+        Assert.Equal(HttpStatusCode.OK, (await _admin.GetAsync($"{Firearms}/{draft.Id}")).StatusCode); // untouched
+    }
 }
